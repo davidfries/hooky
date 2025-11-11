@@ -1,0 +1,86 @@
+name: Release CLI Binaries
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  build:
+    name: Build Deno CLI (Hooky) for multiple targets
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            deno_os: linux
+            deno_arch: x86_64
+            ext: ''
+          - os: macos-latest
+            deno_os: darwin
+            deno_arch: x86_64
+            ext: ''
+          - os: macos-latest
+            deno_os: darwin
+            deno_arch: aarch64
+            ext: ''
+          - os: windows-latest
+            deno_os: windows
+            deno_arch: x86_64
+            ext: '.exe'
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Cache Deno deps
+        run: |
+          deno cache main.ts
+
+      - name: Build binary
+        run: |
+          deno compile -A --unstable -o hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }} main.ts
+          if [ "${{ matrix.ext }}" != "" ]; then mv hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }} hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }}${{ matrix.ext }}; fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }}
+          path: hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }}*
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          for f in **/hooky-*; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" >> SHA256SUMS.txt
+          done
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/**/hooky-*
+            dist/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

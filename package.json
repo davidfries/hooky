@@ -1,0 +1,11 @@
+{
+  "name": "hooky",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "author": "David Fries",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "deno": "^2.5.6"
+  }
+}

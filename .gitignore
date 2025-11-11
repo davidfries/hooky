@@ -1,0 +1,50 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.orig
+*.log
+*.tmp
+*.bak
+.idea/
+.vscode/
+
+# Node / Deno interop (when using npm spec)
+node_modules/
+
+# Deno cache / vendor (if you decide to vendor deps)
+deno.lock.bak
+vendor/
+
+# Coverage / test artifacts
+coverage/
+lcov.info
+
+# Build outputs / compiled binaries
+hooky-*
+dist/
+*.exe
+*.zip
+*.tar.gz
+*.tgz
+
+# Docker
+.docker-cache/
+
+# Logs
+logs/
+*.pid
+
+# Env / secrets
+.env
+.env.*.local
+
+# IDE local history
+.history/
+
+# Mac metadata
+._*
+
+# GitHub Actions temporary download dir (if any custom paths)
+_temp/

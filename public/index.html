@@ -1,0 +1,477 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hooky</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #0e1530;
+      --panel-alt: #121a3d;
+      --header: #141a33;
+      --fg: #e6e8ef;
+      --muted: #9aa3c7;
+      --border: #232a4a;
+      --code-bg: #0a0f22;
+      --accent: #5b8cff;
+    }
+    [data-theme="light"] {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --panel-alt: #f2f4fa;
+      --header: #ffffff;
+      --fg: #0b1020;
+      --muted: #5a667f;
+      --border: #e0e6f3;
+      --code-bg: #f2f4fa;
+      --accent: #3b6cff;
+    }
+
+    html, body { height: 100%; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
+    header { padding: 16px 20px; background: var(--header); position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; }
+    h1 { font-size: 18px; margin: 0; }
+    main { display: grid; grid-template-columns: 320px 1fr; gap: 0; min-height: calc(100vh - 64px); }
+    aside { border-right: 1px solid var(--border); padding: 16px; }
+    .list { display: flex; flex-direction: column; gap: 8px; }
+    .ep { border: 1px solid var(--border); padding: 10px; border-radius: 8px; cursor: pointer; background: var(--panel); }
+    .ep:hover { background: var(--panel-alt); }
+    .muted { color: var(--muted); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .content { padding: 16px; }
+    .events { display: flex; flex-direction: column; gap: 12px; }
+    .evt { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    pre { background: var(--code-bg); padding: 8px; border-radius: 6px; overflow: auto; }
+    .controls { display: flex; gap: 8px; align-items: center; }
+    input, button { background: var(--panel); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+    button { cursor: pointer; }
+    .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+    .btn-ghost { background: transparent; }
+    .pill { font-size: 12px; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+    .gap-8 { gap: 8px; }
+    .wrap { word-break: break-all; }
+
+    /* JSON viewer */
+    .json { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; background: var(--code-bg); border-radius: 6px; padding: 8px; }
+    .json .kv { margin-left: 16px; }
+    .json .toggle { cursor: pointer; color: var(--accent); user-select: none; }
+    .json .key { color: #9cdcfe; }
+    .json .string { color: #ce9178; }
+    .json .number { color: #b5cea8; }
+    .json .boolean { color: #569cd6; }
+    .json .null { color: #808080; }
+  /* Diff styles */
+  .diff { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; background: var(--code-bg); border-radius: 6px; padding: 8px; border: 1px solid var(--border); }
+  .diff-line { display: block; white-space: pre-wrap; }
+  .diff-add { color: #1f7a1f; background: rgba(46, 204, 113, 0.08); border-left: 3px solid #2ecc71; padding-left: 6px; }
+  .diff-remove { color: #b0413e; background: rgba(231, 76, 60, 0.10); border-left: 3px solid #e74c3c; padding-left: 6px; }
+  .diff-change { color: #996800; background: rgba(241, 196, 15, 0.12); border-left: 3px solid #f1c40f; padding-left: 6px; }
+  .diff-header { color: var(--muted); }
+  .live-pill { background: var(--accent); color:#fff; padding:4px 8px; border-radius:16px; font-size:12px; display:inline-flex; align-items:center; gap:4px; }
+  .live-dot { width:8px; height:8px; background:#ff4d4d; border-radius:50%; box-shadow:0 0 4px #ff4d4d; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0% { transform:scale(1); opacity:1;} 70% { transform:scale(1.6); opacity:.25;} 100% { transform:scale(1); opacity:1;} }
+  .flash { animation: flash-bg 2s ease-out; }
+  @keyframes flash-bg { 0% { box-shadow:0 0 0 0 rgba(91,140,255,0.8); } 100% { box-shadow:0 0 0 0 rgba(91,140,255,0); } }
+  .ep.active { outline:2px solid var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Hooky</h1>
+    <div class="controls">
+      <input id="ttl" type="number" min="10" step="10" placeholder="TTL seconds (default 3600)" />
+      <button id="create" class="btn-primary">Create endpoint</button>
+      <button id="theme" class="btn-ghost" title="Toggle theme">🌓</button>
+    </div>
+  </header>
+  <main>
+    <aside>
+      <div class="muted" style="margin-bottom:8px">Active endpoints</div>
+      <div id="list" class="list"></div>
+    </aside>
+    <section class="content">
+      <div id="detail"></div>
+      <div class="row" style="align-items:center">
+        <h3 style="margin:0; display:flex; align-items:center; gap:10px">Events <span id="live-indicator" class="live-pill"><span class="live-dot"></span><span id="live-label">Live</span></span></h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-left:auto">
+          <select id="filter-method">
+            <option value="">All methods</option>
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>PATCH</option>
+            <option>DELETE</option>
+            <option>HEAD</option>
+            <option>OPTIONS</option>
+          </select>
+          <input id="filter-text" type="text" placeholder="Search (path, headers, body)" style="min-width:220px" />
+          <button id="clear-filters" class="btn-ghost" title="Clear filters">Clear</button>
+          <button id="compare-btn" class="btn-primary" disabled title="Compare selected">Compare</button>
+        </div>
+      </div>
+      <div id="diff-panel" style="display:none; margin-top:12px; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px">
+        <div class="row" style="align-items:center; margin-bottom:8px">
+          <strong>Diff</strong>
+          <div style="display:flex; gap:8px; margin-left:auto">
+            <button id="copy-diff" class="btn-ghost" title="Copy diff">Copy Diff</button>
+            <button id="close-diff" class="btn-ghost" title="Close">Close</button>
+          </div>
+        </div>
+  <pre id="diff-output" class="diff"></pre>
+      </div>
+      <div id="events" class="events" style="margin-top:12px"></div>
+    </section>
+  </main>
+
+  <script>
+    const API = '';
+    const listEl = document.getElementById('list');
+    const detailEl = document.getElementById('detail');
+    const eventsEl = document.getElementById('events');
+    const createBtn = document.getElementById('create');
+    const ttlInput = document.getElementById('ttl');
+    const themeBtn = document.getElementById('theme');
+    const filterMethod = document.getElementById('filter-method');
+    const filterText = document.getElementById('filter-text');
+    const clearFiltersBtn = document.getElementById('clear-filters');
+    const compareBtn = document.getElementById('compare-btn');
+    const diffPanel = document.getElementById('diff-panel');
+    const diffOutput = document.getElementById('diff-output');
+    const copyDiffBtn = document.getElementById('copy-diff');
+    const closeDiffBtn = document.getElementById('close-diff');
+    const liveIndicator = document.getElementById('live-indicator');
+    const liveLabel = document.getElementById('live-label');
+
+    let currentId = null;
+    let es = null;
+    let rawEvents = [];
+    let selectedEventIds = new Set();
+    let liveEnabled = true;
+
+    // Theme handling
+    function setTheme(t) {
+      document.body.setAttribute('data-theme', t);
+      localStorage.setItem('hooky:theme', t);
+    }
+    const savedTheme = localStorage.getItem('hooky:theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+    setTheme(savedTheme);
+    themeBtn.onclick = () => {
+      const cur = document.body.getAttribute('data-theme') || 'dark';
+      setTheme(cur === 'dark' ? 'light' : 'dark');
+    };
+
+    // Copy helper
+    async function copy(text) {
+      try { await navigator.clipboard.writeText(text); } catch (e) { console.warn('Clipboard failed', e); }
+    }
+
+    // JSON viewer (collapsible)
+    function renderJSON(value) {
+      const container = document.createElement('div');
+      container.className = 'json';
+      container.appendChild(renderNode(value));
+      return container;
+    }
+    function renderNode(val, key) {
+      const el = document.createElement('div');
+      if (val === null) {
+        el.innerHTML = key != null ? `<span class="key">"${key}"</span>: <span class="null">null</span>` : `<span class="null">null</span>`;
+        return el;
+      }
+      const t = typeof val;
+      if (t === 'string') {
+        el.innerHTML = key != null ? `<span class="key">"${key}"</span>: <span class="string">"${escapeHtml(val)}"</span>` : `<span class="string">"${escapeHtml(val)}"</span>`;
+        return el;
+      }
+      if (t === 'number') {
+        el.innerHTML = key != null ? `<span class="key">"${key}"</span>: <span class="number">${val}</span>` : `<span class="number">${val}</span>`;
+        return el;
+      }
+      if (t === 'boolean') {
+        el.innerHTML = key != null ? `<span class="key">"${key}"</span>: <span class="boolean">${val}</span>` : `<span class="boolean">${val}</span>`;
+        return el;
+      }
+      if (Array.isArray(val)) {
+        const summary = document.createElement('div');
+        const body = document.createElement('div');
+        body.className = 'kv';
+        let open = false;
+        const update = () => { summary.innerHTML = `<span class="toggle">${open ? '▼' : '▶'}</span> ${key != null ? `<span class="key">"${key}"</span>: ` : ''}[array ${val.length}]`; body.style.display = open ? 'block' : 'none'; };
+        summary.onclick = () => { open = !open; update(); };
+        update();
+        val.forEach((item, idx) => body.appendChild(renderNode(item, idx)));
+        el.appendChild(summary); el.appendChild(body); return el;
+      }
+      if (t === 'object') {
+        const keys = Object.keys(val);
+        const summary = document.createElement('div');
+        const body = document.createElement('div');
+        body.className = 'kv';
+        let open = false;
+        const update = () => { summary.innerHTML = `<span class="toggle">${open ? '▼' : '▶'}</span> ${key != null ? `<span class="key">"${key}"</span>: ` : ''}{object ${keys.length}}`; body.style.display = open ? 'block' : 'none'; };
+        summary.onclick = () => { open = !open; update(); };
+        update();
+        keys.forEach(k => body.appendChild(renderNode(val[k], k)));
+        el.appendChild(summary); el.appendChild(body); return el;
+      }
+      el.textContent = String(val);
+      return el;
+    }
+    function escapeHtml(s){ return s.replace(/[&<>"]|'/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+    function fmtTime(ms) {
+      const s = Math.max(0, Math.round((ms - Date.now()) / 1000));
+      return s + 's';
+    }
+
+    async function loadList() {
+      try {
+        const res = await fetch(API + '/api/endpoints');
+        if (!res.ok) throw new Error('Failed to load endpoints');
+        const data = await res.json();
+        listEl.innerHTML = '';
+        if (!data.endpoints.length) {
+          const empty = document.createElement('div');
+          empty.className = 'muted';
+          empty.textContent = 'No endpoints yet. Create one.';
+          listEl.appendChild(empty);
+          return;
+        }
+        for (const ep of data.endpoints) {
+          const div = document.createElement('div');
+          div.className = 'ep' + (ep.id === currentId ? ' active' : '');
+          div.dataset.epId = ep.id;
+            div.innerHTML = `<div class="row"><strong>${ep.id}</strong><span class="muted">${fmtTime(ep.expiresAt)}</span></div><div class="muted" style="word-break:break-all">${ep.url}</div><div class="muted">events: <span class="ep-count">${ep.eventCount}</span></div>`;
+          div.onclick = () => select(ep.id, ep.url, ep.expiresAt);
+          listEl.appendChild(div);
+        }
+      } catch (err) {
+        listEl.innerHTML = '<div class="muted">Error loading endpoints</div>';
+        console.error(err);
+      }
+    }
+
+    async function select(id, url, expiresAt) {
+      currentId = id;
+      detailEl.innerHTML = `<div class="row"><div class="gap-8" style="display:flex;align-items:center"><strong>${id}</strong><span class="pill">${fmtTime(expiresAt)} left</span></div><div class="gap-8" style="display:flex;align-items:center"><button id="copy-id" class="btn-ghost" title="Copy ID">Copy ID</button><button id="copy-url" class="btn-ghost" title="Copy URL">Copy URL</button><button id="toggle-live" class="btn-ghost" title="Toggle live">${liveEnabled ? 'Pause Live' : 'Resume Live'}</button></div></div><div class="wrap"><a href="${url}" target="_blank">${url}</a></div>`;
+      setActiveEndpointCard(id);
+      document.getElementById('copy-id').onclick = () => copy(id);
+      document.getElementById('copy-url').onclick = () => copy(url);
+      document.getElementById('toggle-live').onclick = () => {
+        liveEnabled = !liveEnabled;
+        liveLabel.textContent = liveEnabled ? 'Live' : 'Paused';
+        document.getElementById('toggle-live').textContent = liveEnabled ? 'Pause Live' : 'Resume Live';
+      };
+      eventsEl.innerHTML = '';
+      if (es) { es.close(); es = null; }
+      const res = await fetch(API + `/api/endpoints/${id}/events`);
+      const data = await res.json();
+      rawEvents = data.events.slice();
+      renderEvents();
+      es = new EventSource(API + `/api/endpoints/${id}/stream`);
+      es.onmessage = (ev) => {
+        const evt = JSON.parse(ev.data);
+        rawEvents.unshift(evt);
+        if (liveEnabled) {
+          addIncomingEvent(evt);
+        }
+        updateEndpointEventCount(id);
+      };
+      es.onopen = () => { liveLabel.textContent = 'Live'; };
+      es.onerror = () => {
+        console.warn('Stream error; browser will attempt to reconnect');
+        liveLabel.textContent = 'Reconnecting…';
+      };
+    }
+
+    function renderEvents() {
+      eventsEl.innerHTML = '';
+      const methodFilter = filterMethod.value.trim().toUpperCase();
+      const textFilter = filterText.value.trim().toLowerCase();
+      const filtered = rawEvents.filter(evt => {
+        if (methodFilter && evt.method !== methodFilter) return false;
+        if (textFilter) {
+          const haystack = [evt.path, JSON.stringify(evt.headers || {}), typeof evt.body === 'string' ? evt.body : JSON.stringify(evt.body)].join('\n').toLowerCase();
+          if (!haystack.includes(textFilter)) return false;
+        }
+        return true;
+      });
+      for (const evt of filtered) {
+        eventsEl.appendChild(buildEventCard(evt));
+      }
+      updateCompareState();
+    }
+
+    function passesCurrentFilters(evt) {
+      const methodFilter = filterMethod.value.trim().toUpperCase();
+      const textFilter = filterText.value.trim().toLowerCase();
+      if (methodFilter && evt.method !== methodFilter) return false;
+      if (textFilter) {
+        const haystack = [evt.path, JSON.stringify(evt.headers || {}), typeof evt.body === 'string' ? evt.body : JSON.stringify(evt.body)].join('\n').toLowerCase();
+        if (!haystack.includes(textFilter)) return false;
+      }
+      return true;
+    }
+
+    function addIncomingEvent(evt) {
+      if (!passesCurrentFilters(evt)) return; // keep but don't show
+      const card = buildEventCard(evt);
+      card.classList.add('flash');
+      eventsEl.prepend(card);
+      // Trim DOM list if too large for performance
+      if (eventsEl.children.length > 300) {
+        eventsEl.removeChild(eventsEl.lastChild);
+      }
+      updateCompareState();
+    }
+
+    function updateEndpointEventCount(id) {
+      const card = listEl.querySelector(`.ep[data-ep-id="${id}"] .ep-count`);
+      if (card) {
+        const current = parseInt(card.textContent || '0', 10) + 1;
+        card.textContent = String(current);
+      }
+    }
+
+    function setActiveEndpointCard(id) {
+      listEl.querySelectorAll('.ep').forEach(c => c.classList.toggle('active', c.dataset.epId === id));
+    }
+
+    function buildEventCard(evt) {
+      const el = document.createElement('div');
+      el.className = 'evt';
+      const headerHtml = document.createElement('div');
+      headerHtml.className = 'row';
+      headerHtml.innerHTML = `<div><strong>${evt.method}</strong> <span class="muted">${evt.path}</span></div><div class="muted">${new Date(evt.timestamp).toLocaleTimeString()}</div>`;
+      const meta = document.createElement('div');
+      meta.className = 'row';
+      meta.style.marginTop = '4px';
+      meta.innerHTML = `<div class="muted" style="flex:1">id: ${evt.id}</div><div style="display:flex; gap:4px"><button class="btn-ghost" data-copy="id" title="Copy event id">Copy ID</button><button class="btn-ghost" data-select="${evt.id}" title="Select for diff">${selectedEventIds.has(evt.id) ? 'Unselect' : 'Select'}</button></div>`;
+
+      const headersSection = document.createElement('div');
+      const bodySection = document.createElement('div');
+      const headersTitle = document.createElement('div');
+      headersTitle.className = 'row';
+      headersTitle.innerHTML = `<strong>Headers</strong><div class="gap-8" style="display:flex"><button class="btn-ghost" title="Copy headers">Copy</button></div>`;
+      const bodyTitle = document.createElement('div');
+      bodyTitle.className = 'row';
+      bodyTitle.innerHTML = `<strong>Body</strong><div class="gap-8" style="display:flex"><button class="btn-ghost" title="Copy body">Copy</button></div>`;
+
+      const headersView = renderJSON(evt.headers || {});
+      let parsedBody = evt.body;
+      if (typeof parsedBody === 'string') { try { parsedBody = JSON.parse(parsedBody); } catch {} }
+      const bodyView = renderJSON(parsedBody);
+
+      headersSection.appendChild(headersTitle);
+      headersSection.appendChild(headersView);
+      bodySection.appendChild(bodyTitle);
+      bodySection.appendChild(bodyView);
+
+      el.appendChild(headerHtml);
+      el.appendChild(meta);
+      el.appendChild(headersSection);
+      el.appendChild(bodySection);
+
+      const [copyHeadersBtn] = headersTitle.querySelectorAll('button');
+      const [copyBodyBtn] = bodyTitle.querySelectorAll('button');
+      copyHeadersBtn.onclick = () => copy(JSON.stringify(evt.headers || {}, null, 2));
+      copyBodyBtn.onclick = () => copy(typeof evt.body === 'string' ? evt.body : JSON.stringify(evt.body, null, 2));
+      meta.querySelector('[data-copy="id"]').onclick = () => copy(evt.id);
+      meta.querySelector(`[data-select="${evt.id}"]`).onclick = () => toggleSelect(evt.id);
+      return el;
+    }
+
+    function toggleSelect(id) {
+      if (selectedEventIds.has(id)) selectedEventIds.delete(id); else {
+        if (selectedEventIds.size >= 2) {
+          // replace oldest selection
+          selectedEventIds = new Set([...[...selectedEventIds][1], id]);
+        } else {
+          selectedEventIds.add(id);
+        }
+      }
+      renderEvents();
+    }
+
+    function updateCompareState() {
+      compareBtn.disabled = selectedEventIds.size !== 2;
+    }
+
+    compareBtn.onclick = () => {
+      if (selectedEventIds.size !== 2) return;
+      const [aId, bId] = [...selectedEventIds];
+      const a = rawEvents.find(e => e.id === aId);
+      const b = rawEvents.find(e => e.id === bId);
+      if (!a || !b) return;
+      const diffLines = buildDiff(a, b);
+  diffOutput.innerHTML = renderDiffHtml(diffLines);
+  diffOutput.dataset.raw = diffLines.join('\n');
+      diffPanel.style.display = 'block';
+    };
+    closeDiffBtn.onclick = () => { diffPanel.style.display = 'none'; };
+  copyDiffBtn.onclick = () => copy(diffOutput.dataset.raw || diffOutput.textContent);
+
+    function flatten(obj, prefix = '', out = {}) {
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        for (const k of Object.keys(obj)) flatten(obj[k], prefix ? prefix + '.' + k : k, out);
+      } else if (Array.isArray(obj)) {
+        obj.forEach((v, i) => flatten(v, `${prefix}[${i}]`, out));
+      } else {
+        out[prefix] = obj;
+      }
+      return out;
+    }
+    function buildDiff(aEvt, bEvt) {
+      const parseBody = (b) => {
+        let v = b; if (typeof v === 'string') { try { v = JSON.parse(v); } catch {} } return v;
+      };
+      const aObj = { headers: aEvt.headers || {}, body: parseBody(aEvt.body) };
+      const bObj = { headers: bEvt.headers || {}, body: parseBody(bEvt.body) };
+      const aFlat = flatten(aObj);
+      const bFlat = flatten(bObj);
+      const allKeys = new Set([...Object.keys(aFlat), ...Object.keys(bFlat)]);
+      const lines = [];
+      for (const key of [...allKeys].sort()) {
+        const av = aFlat[key];
+        const bv = bFlat[key];
+        if (av === undefined && bv !== undefined) lines.push(`+ ${key}: ${JSON.stringify(bv)}`);
+        else if (av !== undefined && bv === undefined) lines.push(`- ${key}: ${JSON.stringify(av)}`);
+        else if (JSON.stringify(av) !== JSON.stringify(bv)) lines.push(`~ ${key}: ${JSON.stringify(av)} -> ${JSON.stringify(bv)}`);
+      }
+      if (!lines.length) lines.push('No differences');
+      lines.unshift(`Comparing ${aEvt.id} (${aEvt.method}) vs ${bEvt.id} (${bEvt.method})`);
+      return lines;
+    }
+
+    function renderDiffHtml(lines) {
+      return lines.map((line, idx) => {
+        let cls = 'diff-line diff-header';
+        if (idx > 0) {
+          if (line.startsWith('+ ')) cls = 'diff-line diff-add';
+          else if (line.startsWith('- ')) cls = 'diff-line diff-remove';
+          else if (line.startsWith('~ ')) cls = 'diff-line diff-change';
+          else cls = 'diff-line';
+        }
+        return `<span class="${cls}">${escapeHtml(line)}</span>`;
+      }).join('\n');
+    }
+
+    filterMethod.onchange = renderEvents;
+    filterText.oninput = () => { renderEvents(); };
+    clearFiltersBtn.onclick = () => { filterMethod.value=''; filterText.value=''; renderEvents(); };
+
+    createBtn.onclick = async () => {
+      const ttlSeconds = ttlInput.value ? Number(ttlInput.value) : undefined;
+      const res = await fetch(API + '/api/endpoints', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(ttlSeconds ? { ttlSeconds } : {}) });
+      const ep = await res.json();
+      await loadList();
+      select(ep.id, ep.url, ep.expiresAt);
+    };
+
+    loadList();
+    setInterval(loadList, 5000);
+  </script>
+</body>
+</html>
