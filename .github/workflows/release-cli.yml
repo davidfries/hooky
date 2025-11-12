@@ -53,6 +53,8 @@ jobs:
             target: x86_64-pc-windows-msvc
             ext: '.exe'
     runs-on: ${{ matrix.os }}
+    env:
+      MAC_SIGNING_ENABLED: false # flip to 'true' when you have Apple Developer credentials configured
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -83,14 +85,14 @@ jobs:
           deno compile -A --target=${{ matrix.target }} -o "$OUT" main.ts
 
       - name: Import Apple codesign certs (macOS)
-        if: ${{ matrix.deno_os == 'darwin' }}
+        if: ${{ matrix.deno_os == 'darwin' && env.MAC_SIGNING_ENABLED == 'true' }}
         uses: apple-actions/import-codesign-certs@v2
         with:
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_CERT }}
           p12-password: ${{ secrets.APPLE_DEV_ID_CERT_PASSWORD }}
 
       - name: Codesign binary (macOS)
-        if: ${{ matrix.deno_os == 'darwin' }}
+        if: ${{ matrix.deno_os == 'darwin' && env.MAC_SIGNING_ENABLED == 'true' }}
         shell: bash
         run: |
           if [ -z "${{ secrets.APPLE_CODESIGN_IDENTITY }}" ]; then echo "Skipping codesign: APPLE_CODESIGN_IDENTITY not set"; exit 0; fi
@@ -99,7 +101,7 @@ jobs:
           codesign --force --options runtime --timestamp --sign "${{ secrets.APPLE_CODESIGN_IDENTITY }}" "$OUT"
 
       - name: Notarize and staple (macOS)
-        if: ${{ matrix.deno_os == 'darwin' }}
+        if: ${{ matrix.deno_os == 'darwin' && env.MAC_SIGNING_ENABLED == 'true' }}
         shell: bash
         run: |
           if [ -z "${{ secrets.APPLE_NOTARY_API_KEY }}" ]; then echo "Skipping notarization: APPLE_NOTARY_API_KEY not set"; exit 0; fi
