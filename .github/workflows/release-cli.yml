@@ -93,6 +93,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
@@ -106,12 +108,23 @@ jobs:
             sha256sum "$f" >> SHA256SUMS.txt
           done
 
-      - name: Create Release
+      - name: Create Release (with notes)
+        if: ${{ hashFiles(format('RELEASE_NOTES_{0}.md', github.ref_name)) != '' }}
         uses: softprops/action-gh-release@v1
         with:
           files: |
             dist/**/hooky-*
             dist/SHA256SUMS.txt
           body_path: RELEASE_NOTES_${{ github.ref_name }}.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release (no notes)
+        if: ${{ hashFiles(format('RELEASE_NOTES_{0}.md', github.ref_name)) == '' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/**/hooky-*
+            dist/SHA256SUMS.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
