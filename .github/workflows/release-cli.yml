@@ -79,8 +79,8 @@ jobs:
         shell: bash
         run: |
           LABEL="${{ matrix.deno_os }}-${{ matrix.deno_arch }}"
-          deno compile -A --target=${{ matrix.target }} -o hooky-$LABEL main.ts
-          if [ "${{ matrix.ext }}" != "" ]; then mv hooky-$LABEL hooky-$LABEL${{ matrix.ext }}; fi
+          OUT="hooky-$LABEL${{ matrix.ext }}"
+          deno compile -A --target=${{ matrix.target }} -o "$OUT" main.ts
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
