@@ -83,24 +83,28 @@ jobs:
           deno compile -A --target=${{ matrix.target }} -o "$OUT" main.ts
 
       - name: Import Apple codesign certs (macOS)
-        if: ${{ matrix.deno_os == 'darwin' && secrets.APPLE_DEV_ID_CERT && secrets.APPLE_DEV_ID_CERT_PASSWORD }}
+        if: ${{ matrix.deno_os == 'darwin' }}
         uses: apple-actions/import-codesign-certs@v2
         with:
           p12-file-base64: ${{ secrets.APPLE_DEV_ID_CERT }}
           p12-password: ${{ secrets.APPLE_DEV_ID_CERT_PASSWORD }}
 
       - name: Codesign binary (macOS)
-        if: ${{ matrix.deno_os == 'darwin' && secrets.APPLE_CODESIGN_IDENTITY }}
+        if: ${{ matrix.deno_os == 'darwin' }}
         shell: bash
         run: |
+          if [ -z "${{ secrets.APPLE_CODESIGN_IDENTITY }}" ]; then echo "Skipping codesign: APPLE_CODESIGN_IDENTITY not set"; exit 0; fi
           LABEL="${{ matrix.deno_os }}-${{ matrix.deno_arch }}"
           OUT="hooky-$LABEL${{ matrix.ext }}"
           codesign --force --options runtime --timestamp --sign "${{ secrets.APPLE_CODESIGN_IDENTITY }}" "$OUT"
 
       - name: Notarize and staple (macOS)
-        if: ${{ matrix.deno_os == 'darwin' && secrets.APPLE_NOTARY_API_KEY && secrets.APPLE_NOTARY_API_KEY_ID && secrets.APPLE_NOTARY_ISSUER_ID }}
+        if: ${{ matrix.deno_os == 'darwin' }}
         shell: bash
         run: |
+          if [ -z "${{ secrets.APPLE_NOTARY_API_KEY }}" ]; then echo "Skipping notarization: APPLE_NOTARY_API_KEY not set"; exit 0; fi
+          if [ -z "${{ secrets.APPLE_NOTARY_API_KEY_ID }}" ]; then echo "Skipping notarization: APPLE_NOTARY_API_KEY_ID not set"; exit 0; fi
+          if [ -z "${{ secrets.APPLE_NOTARY_ISSUER_ID }}" ]; then echo "Skipping notarization: APPLE_NOTARY_ISSUER_ID not set"; exit 0; fi
           LABEL="${{ matrix.deno_os }}-${{ matrix.deno_arch }}"
           OUT="hooky-$LABEL${{ matrix.ext }}"
           ZIP="hooky-$LABEL.zip"
