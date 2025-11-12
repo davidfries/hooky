@@ -129,6 +129,13 @@ app.post("/api/endpoints", async (req: Request, res: Response) => {
   res.json({ id, url, ttlSeconds, expiresAt: rec.expiresAt });
 });
 
+app.get("/", async (_req: Request, res: Response) => {
+    
+    const { resolve } = await import("node:path");
+    res.sendFile(resolve("public", "index.html")
+);
+});
+
 // Get endpoint metadata (simple)
 app.get("/api/endpoints/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
