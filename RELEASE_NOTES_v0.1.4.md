@@ -3,6 +3,9 @@ Release v0.1.4
 Updated version: 0.1.3 -> 0.1.4
 
 Changes (last 20 commits):
+- checkout version bump
+- release: v0.1.3
+- release: v0.1.4
 - release changes
 - release: v0.1.3
 - release notes
