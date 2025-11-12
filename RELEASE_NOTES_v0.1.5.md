@@ -1,8 +1,10 @@
 Release v0.1.5
 
-Updated version: 0.1.4 -> 0.1.5
+Updated version: 0.1.5 -> 0.1.5
 
 Changes (last 20 commits):
+- fix for macos signing secret conditionals in workflow
+- release: v0.1.5
 - cli server management macos signing garbage
 - release: v0.1.4
 - checkout version bump
