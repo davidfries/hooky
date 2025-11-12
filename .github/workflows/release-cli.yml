@@ -82,6 +82,33 @@ jobs:
           OUT="hooky-$LABEL${{ matrix.ext }}"
           deno compile -A --target=${{ matrix.target }} -o "$OUT" main.ts
 
+      - name: Import Apple codesign certs (macOS)
+        if: ${{ matrix.deno_os == 'darwin' && secrets.APPLE_DEV_ID_CERT && secrets.APPLE_DEV_ID_CERT_PASSWORD }}
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.APPLE_DEV_ID_CERT }}
+          p12-password: ${{ secrets.APPLE_DEV_ID_CERT_PASSWORD }}
+
+      - name: Codesign binary (macOS)
+        if: ${{ matrix.deno_os == 'darwin' && secrets.APPLE_CODESIGN_IDENTITY }}
+        shell: bash
+        run: |
+          LABEL="${{ matrix.deno_os }}-${{ matrix.deno_arch }}"
+          OUT="hooky-$LABEL${{ matrix.ext }}"
+          codesign --force --options runtime --timestamp --sign "${{ secrets.APPLE_CODESIGN_IDENTITY }}" "$OUT"
+
+      - name: Notarize and staple (macOS)
+        if: ${{ matrix.deno_os == 'darwin' && secrets.APPLE_NOTARY_API_KEY && secrets.APPLE_NOTARY_API_KEY_ID && secrets.APPLE_NOTARY_ISSUER_ID }}
+        shell: bash
+        run: |
+          LABEL="${{ matrix.deno_os }}-${{ matrix.deno_arch }}"
+          OUT="hooky-$LABEL${{ matrix.ext }}"
+          ZIP="hooky-$LABEL.zip"
+          /usr/bin/zip -r "$ZIP" "$OUT"
+          echo "${{ secrets.APPLE_NOTARY_API_KEY }}" | base64 --decode > notary.p8
+          xcrun notarytool submit "$ZIP" --key notary.p8 --key-id "${{ secrets.APPLE_NOTARY_API_KEY_ID }}" --issuer "${{ secrets.APPLE_NOTARY_ISSUER_ID }}" --wait
+          xcrun stapler staple -v "$OUT"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

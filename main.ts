@@ -4,6 +4,9 @@
 //   events <id>           -> lists captured events for the endpoint
 //   ping <id> [payload]   -> convenience: send a test POST to the endpoint (local only)
 //   list                  -> list active endpoints
+//   server [--port <port>] [--redis <redisUrl>] -> launch built-in backend server
+//   server start [--port <port>] [--redis <redisUrl>] -> launch backend in background
+//   server stop -> stop background backend
 //
 // Configure backend via env HOOKY_SERVER (default http://localhost:3000)
 
@@ -102,6 +105,155 @@ async function cmdPing(id?: string, payloadArg?: string) {
     if (text) console.log(text);
 }
 
+async function cmdServer(args: string[]) {
+    // Subcommand handling: start/stop/background management
+    const sub = args[0];
+    if (sub === "start") {
+        await cmdServerStart(args.slice(1));
+        return;
+    } else if (sub === "stop") {
+        await cmdServerStop();
+        return;
+    } else if (sub === "status") {
+        await cmdServerStatus();
+        return;
+    }
+    // Foreground legacy behavior
+    const flags = args;
+    let port: number | undefined; let redisUrl: string | undefined;
+    for (let i = 0; i < flags.length; i++) {
+        const a = flags[i];
+        if ((a === "--port" || a === "-p") && flags[i + 1]) port = Number(flags[++i]);
+        else if (a === "--redis" && flags[i + 1]) redisUrl = flags[++i];
+    }
+    if (port) Deno.env.set("PORT", String(port));
+    if (redisUrl) Deno.env.set("REDIS_URL", redisUrl);
+    console.log("Starting Hooky backend server (foreground)...\n  PORT=", Deno.env.get("PORT") || "3000", "\n  REDIS_URL=", Deno.env.get("REDIS_URL") || "(in-memory fallback if unreachable)");
+    await import("./server/index.ts");
+}
+
+function getStateDir(): string {
+    const override = Deno.env.get("HOOKY_STATE_DIR");
+    if (override) return override;
+    const home = Deno.env.get("HOME") || Deno.cwd();
+    return `${home}/.hooky`;
+}
+function pidFile(): string { return `${getStateDir()}/server.pid`; }
+function metaFile(): string { return `${getStateDir()}/server.meta.json`; }
+
+async function cmdServerStart(flags: string[]) {
+    // Parse flags for port/redis/force/log
+    let port: number | undefined; let redisUrl: string | undefined; let force = false; let logPathFlag: string | null = null;
+    for (let i = 0; i < flags.length; i++) {
+        const a = flags[i];
+        if ((a === "--port" || a === "-p") && flags[i + 1]) port = Number(flags[++i]);
+        else if (a === "--redis" && flags[i + 1]) redisUrl = flags[++i];
+        else if (a === "--force") force = true;
+        else if (a === "--log") {
+            const next = flags[i + 1];
+            if (next && !next.startsWith("--")) { logPathFlag = next; i++; } else logPathFlag = "default";
+        }
+    }
+    const dir = getStateDir();
+    try { await Deno.mkdir(dir, { recursive: true }); } catch (_e) { /* directory likely exists */ }
+    // Check existing PID
+    let existingPid: number | undefined;
+    try {
+        existingPid = Number((await Deno.readTextFile(pidFile())).trim());
+    } catch (_e) { /* no pid file */ }
+    if (existingPid && !force) {
+        // Try a light probe: send signal 0 (not supported in Deno) fallback just inform user.
+        console.error(`Server appears to already be running (pid ${existingPid}). Use --force to overwrite or run 'hooky server stop'.`);
+        return;
+    }
+    const exe = Deno.execPath();
+    const isDeno = exe.toLowerCase().includes("deno");
+    const scriptPath = new URL(import.meta.url).pathname;
+    const args: string[] = isDeno ? ["run", "-A", scriptPath, "server"] : ["server"];
+    if (port) args.push("--port", String(port));
+    if (redisUrl) args.push("--redis", redisUrl);
+    // Spawn background-ish process. Drop stdout/stderr to avoid blocking.
+    const logPath = logPathFlag ? (logPathFlag === "default" ? `${dir}/server.log` : logPathFlag) : "";
+    // Use a wrapper shell command to detach fully (POSIX). On Windows we rely on direct spawn.
+    let childPid: number;
+    if (Deno.build.os !== "windows") {
+        const portVal = port ? String(port) : (Deno.env.get("PORT") || "3000");
+        const redisPart = redisUrl ? `REDIS_URL=${redisUrl}` : "";
+        const envAssign = `PORT=${portVal} ${redisPart}`.trim();
+        // nohup ensures it keeps running after terminal closes; echo $! captures PID.
+    const redirect = logPath ? `>"${logPath}" 2>&1` : `>/dev/null 2>&1`;
+    const shellCmd = `${envAssign ? envAssign + ' ' : ''}nohup ${exe} ${args.map(a=>JSON.stringify(a)).join(' ')} ${redirect} & echo $!`;
+        const out = await new Deno.Command("/bin/bash", { args: ["-c", shellCmd] }).output();
+        childPid = Number(new TextDecoder().decode(out.stdout).trim());
+    } else {
+        // Windows: use PowerShell Start-Process -WindowStyle Hidden -PassThru to get PID
+        const portVal = port ? String(port) : (Deno.env.get("PORT") || "3000");
+        // When compiled, exe may not include 'deno'; if running via deno, args already reflect run -A main.ts server
+        // We'll construct a command invoking the current executable with args we built.
+        const psCmd = `Start-Process -WindowStyle Hidden -PassThru -FilePath '${exe}' -ArgumentList ${args.map(a=>`'${a.replace(/'/g,"''")}'`).join(",")} -NoNewWindow`;
+    const redirect = logPath ? ` -RedirectStandardOutput '${logPath}' -RedirectStandardError '${logPath}'` : "";
+    const fullCmd = `powershell -NoProfile -Command "$env:PORT='${portVal}';${redisUrl?` $env:REDIS_URL='${redisUrl}';`:""} ${psCmd}${redirect} | Select-Object -ExpandProperty Id"`;
+        const out = await new Deno.Command("cmd", { args: ["/C", fullCmd] }).output();
+        childPid = Number(new TextDecoder().decode(out.stdout).trim());
+    }
+    await Deno.writeTextFile(pidFile(), String(childPid));
+    const meta = {
+        pid: childPid,
+        port: port ? port : Number(Deno.env.get("PORT") || 3000),
+        redis: redisUrl || Deno.env.get("REDIS_URL") || null,
+        startedAt: new Date().toISOString(),
+        log: logPath || null,
+        platform: Deno.build.os,
+        deno: Deno.version.deno,
+    };
+    try { await Deno.writeTextFile(metaFile(), JSON.stringify(meta, null, 2)); } catch(_e) { /* meta write failed */ }
+    console.log(`Hooky server started in background (pid ${childPid})${logPath?` log=${logPath}`:""}`);
+}
+
+async function cmdServerStop() {
+    let pid: number | undefined;
+    try { pid = Number((await Deno.readTextFile(pidFile())).trim()); } catch (_e) { /* missing pid */ }
+    if (!pid) {
+        console.error("No PID file found; server not running?");
+        return;
+    }
+    let killed = false;
+    if (Deno.build.os !== "windows") {
+        try { Deno.kill(pid, "SIGTERM"); killed = true; } catch (e) { console.warn("Kill failed", e); }
+    } else {
+        try {
+            await new Deno.Command("taskkill", { args: ["/PID", String(pid), "/T", "/F"] }).spawn().status; killed = true;
+        } catch (e) { console.warn("taskkill failed", e); }
+    }
+    if (killed) {
+        try { await Deno.remove(pidFile()); } catch (_e) { /* ignore */ }
+        try { await Deno.remove(metaFile()); } catch (_e) { /* ignore */ }
+        console.log(`Sent termination signal to Hooky server (pid ${pid}).`);
+    } else {
+        console.error(`Failed to kill process ${pid}. You may need to terminate it manually.`);
+    }
+}
+interface ServerMeta { pid: number; port: number; redis: string | null; startedAt: string; log: string | null; platform: string; deno: string; }
+async function cmdServerStatus() {
+    let pid: number | undefined; try { pid = Number((await Deno.readTextFile(pidFile())).trim()); } catch(_e) { /* no pid file */ }
+    let meta: ServerMeta | null = null; try { meta = JSON.parse(await Deno.readTextFile(metaFile())) as ServerMeta; } catch(_e) { /* no meta */ }
+    if (!pid) { console.log("Server: not running (no PID file)" ); return; }
+    let alive = false;
+    if (Deno.build.os !== "windows") {
+        try {
+            const ps = await new Deno.Command("/bin/bash", { args: ["-c", `ps -p ${pid} -o pid=`] }).output();
+            const txt = new TextDecoder().decode(ps.stdout).trim(); alive = !!txt;
+        } catch(_e) { /* ps failed */ }
+    } else {
+        try {
+            const out = await new Deno.Command("cmd", { args: ["/C", `tasklist /FI \"PID eq ${pid}\" | findstr ${pid}`] }).output();
+            alive = out.stdout.length > 0;
+        } catch(_e) { /* tasklist failed */ }
+    }
+    console.log(`Server status:\n  pid: ${pid}\n  alive: ${alive}\n  port: ${meta?.port ?? 'unknown'}\n  redis: ${meta?.redis ?? 'none'}\n  startedAt: ${meta?.startedAt ?? 'unknown'}\n  log: ${meta?.log ?? 'none'}`);
+    if (!alive) console.log("Note: PID file exists but process not alive. Use 'hooky server start --force' to restart.");
+}
+
 if (import.meta.main) {
     const [cmd, ...args] = Deno.args;
     (async () => {
@@ -116,6 +268,9 @@ if (import.meta.main) {
                 case "ping":
                     await cmdPing(args[0], args[1]);
                     break;
+                case "server":
+                    await cmdServer(args);
+                    break;
                 case "version":
                 case "--version":
                 case "-v":
@@ -125,7 +280,7 @@ if (import.meta.main) {
                             await cmdList();
                             break;
                 case undefined:
-                console.log("Hooky client usage:\n  create [ttlSeconds]\n  list\n  events <id>\n  ping <id> [json]\n  version | --version | -v");
+                console.log("Hooky client usage:\n  create [ttlSeconds]\n  list\n  events <id>\n  ping <id> [json]\n  server [--port <n>] [--redis <url>]  (foreground)\n  server start [--port <n>] [--redis <url>] [--force] [--log [path]]\n  server stop\n  server status\n  version | --version | -v");
                     break;
                 default:
                     console.error(`Unknown command: ${cmd}`);
