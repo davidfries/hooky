@@ -11,8 +11,23 @@ permissions:
   actions: read
 
 jobs:
+  tests:
+    name: Run test suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+      - name: Cache deps
+        run: deno cache main.ts
+      - name: Run tests
+        run: deno test -A
   build:
     name: Build Deno CLI (Hooky) for multiple targets
+    needs: tests
     strategy:
       fail-fast: false
       matrix:
@@ -20,18 +35,22 @@ jobs:
           - os: ubuntu-latest
             deno_os: linux
             deno_arch: x86_64
+            target: x86_64-unknown-linux-gnu
             ext: ''
           - os: macos-latest
             deno_os: darwin
             deno_arch: x86_64
+            target: x86_64-apple-darwin
             ext: ''
           - os: macos-latest
             deno_os: darwin
             deno_arch: aarch64
+            target: aarch64-apple-darwin
             ext: ''
           - os: windows-latest
             deno_os: windows
             deno_arch: x86_64
+            target: x86_64-pc-windows-msvc
             ext: '.exe'
     runs-on: ${{ matrix.os }}
     steps:
@@ -41,16 +60,27 @@ jobs:
       - name: Setup Deno
         uses: denoland/setup-deno@v1
         with:
-          deno-version: v1.x
+          deno-version: v2.x
 
       - name: Cache Deno deps
+        shell: bash
         run: |
           deno cache main.ts
 
-      - name: Build binary
+      - name: Inject version from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: |
-          deno compile -A --unstable -o hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }} main.ts
-          if [ "${{ matrix.ext }}" != "" ]; then mv hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }} hooky-${{ matrix.deno_os }}-${{ matrix.deno_arch }}${{ matrix.ext }}; fi
+          VERSION_TAG="${GITHUB_REF#refs/tags/v}"
+          echo "export const VERSION = \"$VERSION_TAG\";" > version.ts
+          echo "Injected version: $VERSION_TAG"
+
+      - name: Build binary
+        shell: bash
+        run: |
+          LABEL="${{ matrix.deno_os }}-${{ matrix.deno_arch }}"
+          deno compile -A --target=${{ matrix.target }} -o hooky-$LABEL main.ts
+          if [ "${{ matrix.ext }}" != "" ]; then mv hooky-$LABEL hooky-$LABEL${{ matrix.ext }}; fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -82,5 +112,6 @@ jobs:
           files: |
             dist/**/hooky-*
             dist/SHA256SUMS.txt
+          body_path: RELEASE_NOTES_${{ github.ref_name }}.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

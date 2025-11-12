@@ -10,6 +10,6 @@
     "cors": "npm:cors@2.8.5",
     "redis": "npm:redis@4",
     "supertest": "npm:supertest@6"
-  }
-  ,"nodeModulesDir": true
+  },
+  "nodeModulesDir": "auto"
 }

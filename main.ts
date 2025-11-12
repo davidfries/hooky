@@ -30,6 +30,7 @@ type StoredEvent = {
 };
 
 const BASE_URL = Deno.env.get("HOOKY_SERVER") ?? "http://localhost:3000";
+import { VERSION } from "./version.ts";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${BASE_URL}${path}`, {
@@ -115,11 +116,16 @@ if (import.meta.main) {
                 case "ping":
                     await cmdPing(args[0], args[1]);
                     break;
+                case "version":
+                case "--version":
+                case "-v":
+                    console.log(VERSION);
+                    break;
                         case "list":
                             await cmdList();
                             break;
                 case undefined:
-                            console.log("Hooky client usage:\n  create [ttlSeconds]\n  list\n  events <id>\n  ping <id> [json]");
+                console.log("Hooky client usage:\n  create [ttlSeconds]\n  list\n  events <id>\n  ping <id> [json]\n  version | --version | -v");
                     break;
                 default:
                     console.error(`Unknown command: ${cmd}`);
