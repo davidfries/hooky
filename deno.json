@@ -11,5 +11,5 @@
     "redis": "npm:redis@4",
     "supertest": "npm:supertest@6"
   }
-  ,"nodeModulesDir": "auto"
+  ,"nodeModulesDir": true
 }
