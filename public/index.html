@@ -181,10 +181,19 @@
           const div = document.createElement('div');
           div.className = 'ep list-group-item list-group-item-action' + (ep.id === currentId ? ' active' : '');
           div.dataset.epId = ep.id;
-            div.innerHTML = `<div class="d-flex justify-content-between"><strong>${ep.id}</strong><span class="muted">${fmtTime(ep.expiresAt)}</span></div><div class="muted text-break">${ep.url}</div><div class="muted">events: <span class="ep-count">${ep.eventCount}</span></div>`;
+            div.innerHTML = `<div class="d-flex justify-content-between"><strong>${ep.id}</strong><span class="muted">${fmtTime(ep.expiresAt)}</span></div><div class="muted text-break">${ep.url}</div><div class="d-flex justify-content-between align-items-center"><div class="muted">events: <span class="ep-count">${ep.eventCount}</span></div><button class="btn btn-sm btn-outline-danger delete-ep" data-id="${ep.id}" title="Delete endpoint" onclick="event.stopPropagation()">Delete</button></div>`;
           div.onclick = () => select(ep.id, ep.url, ep.expiresAt);
           listEl.appendChild(div);
         }
+        // Attach delete handlers
+        listEl.querySelectorAll('.delete-ep').forEach(btn => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            if (!confirm(`Delete endpoint ${id}? This will remove all events.`)) return;
+            await deleteEndpoint(id);
+          };
+        });
       } catch (err) {
         listEl.innerHTML = '<div class="muted">Error loading endpoints</div>';
         console.error(err);
@@ -193,10 +202,14 @@
 
     async function select(id, url, expiresAt) {
       currentId = id;
-      detailEl.innerHTML = `<div class="card glass p-5 text-center"><div class="mb-3"><strong>${id}</strong> <span class="pill">${fmtTime(expiresAt)} left</span></div><div class="d-flex flex-wrap justify-content-center gap-3 mb-4"><button id="copy-id" class="btn btn-outline-secondary" title="Copy ID">Copy ID</button><button id="copy-url" class="btn btn-outline-secondary" title="Copy URL">Copy URL</button><button id="toggle-live" class="btn btn-outline-secondary" title="Toggle live">${liveEnabled ? 'Pause Live' : 'Resume Live'}</button></div><div class="wrap"><a href="${url}" target="_blank">${url}</a></div></div>`;
+      detailEl.innerHTML = `<div class="card glass p-5 text-center"><div class="mb-3"><strong>${id}</strong> <span class="pill">${fmtTime(expiresAt)} left</span></div><div class="d-flex flex-wrap justify-content-center gap-3 mb-4"><button id="copy-id" class="btn btn-outline-secondary" title="Copy ID">Copy ID</button><button id="copy-url" class="btn btn-outline-secondary" title="Copy URL">Copy URL</button><button id="toggle-live" class="btn btn-outline-secondary" title="Toggle live">${liveEnabled ? 'Pause Live' : 'Resume Live'}</button><button id="delete-endpoint" class="btn btn-outline-danger" title="Delete endpoint">Delete</button></div><div class="wrap"><a href="${url}" target="_blank">${url}</a></div></div>`;
       setActiveEndpointCard(id);
       document.getElementById('copy-id').onclick = () => copy(id);
       document.getElementById('copy-url').onclick = () => copy(url);
+      document.getElementById('delete-endpoint').onclick = async () => {
+        if (!confirm(`Delete endpoint ${id}? This will remove all events.`)) return;
+        await deleteEndpoint(id);
+      };
       document.getElementById('toggle-live').onclick = () => {
         liveEnabled = !liveEnabled;
         liveLabel.textContent = liveEnabled ? 'Live' : 'Paused';
@@ -278,6 +291,24 @@
 
     function setActiveEndpointCard(id) {
       listEl.querySelectorAll('.ep').forEach(c => c.classList.toggle('active', c.dataset.epId === id));
+    }
+
+    async function deleteEndpoint(id) {
+      try {
+        const res = await fetch(API + `/api/endpoints/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete endpoint');
+        // Close SSE if active
+        if (currentId === id) {
+          if (es) { es.close(); es = null; }
+          currentId = null;
+          eventsEl.innerHTML = '';
+          detailEl.innerHTML = `<div class="card glass p-5 text-center"><div class="muted mb-2">Create or select an endpoint to view details.</div><div class="small text-muted">Use the TTL field to set a lifespan before creation.</div></div>`;
+        }
+        await loadList();
+      } catch (err) {
+        console.error('Delete failed', err);
+        alert('Failed to delete endpoint');
+      }
     }
 
     function buildEventCard(evt) {

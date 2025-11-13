@@ -83,6 +83,7 @@ When `PUBLIC_BASE_URL` is set every response containing a `url` field uses it, i
 - `POST /api/endpoints` body `{ ttlSeconds? }` -> `{ id, url, ttlSeconds, expiresAt }`
 - `GET /api/endpoints` -> `{ endpoints: [{ id, url, ttlSeconds, expiresAt, eventCount }] }`
 - `GET /api/endpoints/:id/events` -> `{ events: HookEvent[] }`
+- `DELETE /api/endpoints/:id` -> `{ ok: true, deleted: id }` (removes endpoint and all events)
 - Receive webhook: any method `/hook/:id` storing body + metadata.
 - `GET /api/endpoints/:id/stream` -> SSE events (one JSON object per line-delimited message).
 

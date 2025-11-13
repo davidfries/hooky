@@ -69,6 +69,22 @@ async function listEvents(id: string): Promise<HookEvent[]> {
   const rec = memoryEndpoints.get(id); return rec ? rec.events : [];
 }
 
+async function deleteEndpoint(id: string): Promise<boolean> {
+  if (useRedis && redis) {
+    const rec = await getEndpoint(id);
+    if (!rec) return false;
+    await redis.del(`endpoint:${id}`);
+    await redis.del(`events:${id}`);
+    await redis.sRem("endpoints", id);
+    return true;
+  } else {
+    const existed = memoryEndpoints.has(id);
+    memoryEndpoints.delete(id);
+    channelEmitters.delete(id);
+    return existed;
+  }
+}
+
 export function buildApp() {
   const app = express();
   app.use(cors());
@@ -97,6 +113,12 @@ export function buildApp() {
   app.get("/api/endpoints/:id/events", async (req: Request, res: Response) => {
     const rec = await getEndpoint(req.params.id); if (!rec) return res.status(404).json({ error: "not found" });
     res.json({ events: await listEvents(rec.id) });
+  });
+
+  app.delete("/api/endpoints/:id", async (req: Request, res: Response) => {
+    const deleted = await deleteEndpoint(req.params.id);
+    if (!deleted) return res.status(404).json({ error: "not found" });
+    res.json({ ok: true, deleted: req.params.id });
   });
 
   app.all("/hook/:id", async (req: Request, res: Response) => {

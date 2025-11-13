@@ -112,6 +112,22 @@ async function listEvents(id: string): Promise<HookEvent[]> {
   return rec ? rec.events : [];
 }
 
+async function deleteEndpoint(id: string): Promise<boolean> {
+  if (useRedis && redis) {
+    const rec = await getEndpoint(id);
+    if (!rec) return false;
+    await redis.del(`endpoint:${id}`);
+    await redis.del(`events:${id}`);
+    await redis.sRem("endpoints", id);
+    return true;
+  } else {
+    const existed = memoryEndpoints.has(id);
+    memoryEndpoints.delete(id);
+    channelEmitters.delete(id);
+    return existed;
+  }
+}
+
 function computeBaseUrl(req: Request): string {
   const envBase = process.env.PUBLIC_BASE_URL?.trim();
   if (envBase && envBase.length) {
@@ -184,6 +200,14 @@ app.get("/api/endpoints/:id/events", async (req: Request, res: Response) => {
   if (!rec) return res.status(404).json({ error: "not found" });
   const events = await listEvents(id);
   res.json({ events });
+});
+
+// Delete an endpoint
+app.delete("/api/endpoints/:id", async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const deleted = await deleteEndpoint(id);
+  if (!deleted) return res.status(404).json({ error: "not found" });
+  res.json({ ok: true, deleted: id });
 });
 
 // Server-Sent Events stream for live events
