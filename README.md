@@ -49,6 +49,35 @@ Or using tasks shorthand:
 HOOKY_SERVER=http://localhost:3000 deno task dev create
 ```
 
+## Configuration (Environment Variables)
+
+These environment variables customize binding, storage, and URL generation.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `3000` | Port the server listens on. |
+| `HOST` | `0.0.0.0` | Bind address (`127.0.0.1` restricts to local machine; `::` for IPv6). |
+| `REDIS_URL` | `redis://10.100.100.53:6379` | Redis connection; falls back to in‑memory if unreachable. |
+| `PUBLIC_BASE_URL` | request-derived (`protocol://host`) | Overrides base used to build endpoint URLs (`{base}/hook/{id}`); set for public hosting behind proxies. Trailing slashes trimmed. |
+| `HOOKY_FORCE_MEMORY` | unset | Force in‑memory mode (useful for tests). |
+
+Example (public domain + custom port + Docker Redis):
+
+```bash
+PUBLIC_BASE_URL="https://hooks.example.com" \
+PORT=8080 HOST=0.0.0.0 \
+REDIS_URL=redis://redis:6379 \
+deno task server
+```
+
+Bind only to loopback (local only):
+
+```bash
+HOST=127.0.0.1 deno task server
+```
+
+When `PUBLIC_BASE_URL` is set every response containing a `url` field uses it, independent of reverse proxy headers.
+
 ## API
 
 - `POST /api/endpoints` body `{ ttlSeconds? }` -> `{ id, url, ttlSeconds, expiresAt }`
