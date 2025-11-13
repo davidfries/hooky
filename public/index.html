@@ -4,99 +4,32 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hooky</title>
-  <style>
-    :root {
-      --bg: #0b1020;
-      --panel: #0e1530;
-      --panel-alt: #121a3d;
-      --header: #141a33;
-      --fg: #e6e8ef;
-      --muted: #9aa3c7;
-      --border: #232a4a;
-      --code-bg: #0a0f22;
-      --accent: #5b8cff;
-    }
-    [data-theme="light"] {
-      --bg: #f7f8fb;
-      --panel: #ffffff;
-      --panel-alt: #f2f4fa;
-      --header: #ffffff;
-      --fg: #0b1020;
-      --muted: #5a667f;
-      --border: #e0e6f3;
-      --code-bg: #f2f4fa;
-      --accent: #3b6cff;
-    }
-
-    html, body { height: 100%; }
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 0; background: var(--bg); color: var(--fg); }
-    header { padding: 16px 20px; background: var(--header); position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 12px; }
-    h1 { font-size: 18px; margin: 0; }
-    main { display: grid; grid-template-columns: 320px 1fr; gap: 0; min-height: calc(100vh - 64px); }
-    aside { border-right: 1px solid var(--border); padding: 16px; }
-    .list { display: flex; flex-direction: column; gap: 8px; }
-    .ep { border: 1px solid var(--border); padding: 10px; border-radius: 8px; cursor: pointer; background: var(--panel); }
-    .ep:hover { background: var(--panel-alt); }
-    .muted { color: var(--muted); }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .content { padding: 16px; }
-    .events { display: flex; flex-direction: column; gap: 12px; }
-    .evt { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
-    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    pre { background: var(--code-bg); padding: 8px; border-radius: 6px; overflow: auto; }
-    .controls { display: flex; gap: 8px; align-items: center; }
-    input, button { background: var(--panel); color: var(--fg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
-    button { cursor: pointer; }
-    .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
-    .btn-ghost { background: transparent; }
-    .pill { font-size: 12px; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
-    .gap-8 { gap: 8px; }
-    .wrap { word-break: break-all; }
-
-    /* JSON viewer */
-    .json { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; background: var(--code-bg); border-radius: 6px; padding: 8px; }
-    .json .kv { margin-left: 16px; }
-    .json .toggle { cursor: pointer; color: var(--accent); user-select: none; }
-    .json .key { color: #9cdcfe; }
-    .json .string { color: #ce9178; }
-    .json .number { color: #b5cea8; }
-    .json .boolean { color: #569cd6; }
-    .json .null { color: #808080; }
-  /* Diff styles */
-  .diff { font-family: ui-monospace, Menlo, Monaco, Consolas, monospace; background: var(--code-bg); border-radius: 6px; padding: 8px; border: 1px solid var(--border); }
-  .diff-line { display: block; white-space: pre-wrap; }
-  .diff-add { color: #1f7a1f; background: rgba(46, 204, 113, 0.08); border-left: 3px solid #2ecc71; padding-left: 6px; }
-  .diff-remove { color: #b0413e; background: rgba(231, 76, 60, 0.10); border-left: 3px solid #e74c3c; padding-left: 6px; }
-  .diff-change { color: #996800; background: rgba(241, 196, 15, 0.12); border-left: 3px solid #f1c40f; padding-left: 6px; }
-  .diff-header { color: var(--muted); }
-  .live-pill { background: var(--accent); color:#fff; padding:4px 8px; border-radius:16px; font-size:12px; display:inline-flex; align-items:center; gap:4px; }
-  .live-dot { width:8px; height:8px; background:#ff4d4d; border-radius:50%; box-shadow:0 0 4px #ff4d4d; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0% { transform:scale(1); opacity:1;} 70% { transform:scale(1.6); opacity:.25;} 100% { transform:scale(1); opacity:1;} }
-  .flash { animation: flash-bg 2s ease-out; }
-  @keyframes flash-bg { 0% { box-shadow:0 0 0 0 rgba(91,140,255,0.8); } 100% { box-shadow:0 0 0 0 rgba(91,140,255,0); } }
-  .ep.active { outline:2px solid var(--accent); }
-  </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ENjdO4Dr2bkBIFxQpeoA6VKHr8zWv1pGp9l9huZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body>
-  <header>
-    <h1>Hooky</h1>
-    <div class="controls">
-      <input id="ttl" type="number" min="10" step="10" placeholder="TTL seconds (default 3600)" />
-      <button id="create" class="btn-primary">Create endpoint</button>
-      <button id="theme" class="btn-ghost" title="Toggle theme">🌓</button>
+  <header class="navbar navbar-expand-lg navbar-dark app-navbar">
+    <div class="container container-narrow d-flex align-items-center gap-3">
+      <a class="navbar-brand brand" href="/"><span class="logo"></span> Hooky</a>
+      <div class="controls d-flex align-items-center gap-2 ms-auto">
+        <input id="ttl" class="form-control w-auto" type="number" min="10" step="10" placeholder="TTL seconds (default 3600)" />
+        <button id="create" class="btn btn-primary">Create endpoint</button>
+        <button id="theme" class="btn btn-outline-secondary" title="Toggle theme">🌓</button>
+      </div>
     </div>
   </header>
-  <main>
-    <aside>
-      <div class="muted" style="margin-bottom:8px">Active endpoints</div>
-      <div id="list" class="list"></div>
-    </aside>
-    <section class="content">
-      <div id="detail"></div>
-      <div class="row" style="align-items:center">
-        <h3 style="margin:0; display:flex; align-items:center; gap:10px">Events <span id="live-indicator" class="live-pill"><span class="live-dot"></span><span id="live-label">Live</span></span></h3>
-        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-left:auto">
-          <select id="filter-method">
+  <main class="container container-narrow py-4">
+    <div class="row g-3">
+      <aside class="col-md-3 col-lg-3 border-end p-3">
+        <div class="muted mb-2">Active endpoints</div>
+        <div id="list" class="list list-group"></div>
+      </aside>
+      <section class="col-md-9 col-lg-9 p-3">
+        <div id="detail" class="mb-4 detail-card"></div>
+        <div class="d-flex align-items-center mb-3">
+          <h3 class="mb-0 d-flex align-items-center gap-2">Events <span id="live-indicator" class="live-pill"><span class="live-dot"></span><span id="live-label">Live</span></span></h3>
+          <div class="d-flex gap-2 flex-wrap align-items-center ms-auto">
+            <select id="filter-method" class="form-select">
             <option value="">All methods</option>
             <option>GET</option>
             <option>POST</option>
@@ -105,24 +38,29 @@
             <option>DELETE</option>
             <option>HEAD</option>
             <option>OPTIONS</option>
-          </select>
-          <input id="filter-text" type="text" placeholder="Search (path, headers, body)" style="min-width:220px" />
-          <button id="clear-filters" class="btn-ghost" title="Clear filters">Clear</button>
-          <button id="compare-btn" class="btn-primary" disabled title="Compare selected">Compare</button>
-        </div>
-      </div>
-      <div id="diff-panel" style="display:none; margin-top:12px; background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px">
-        <div class="row" style="align-items:center; margin-bottom:8px">
-          <strong>Diff</strong>
-          <div style="display:flex; gap:8px; margin-left:auto">
-            <button id="copy-diff" class="btn-ghost" title="Copy diff">Copy Diff</button>
-            <button id="close-diff" class="btn-ghost" title="Close">Close</button>
+            </select>
+            <input id="filter-text" class="form-control" type="text" placeholder="Search (path, headers, body)" />
+            <button id="clear-filters" class="btn btn-outline-secondary" title="Clear filters">Clear</button>
+            <button id="compare-btn" class="btn btn-primary" disabled title="Compare selected">Compare</button>
           </div>
         </div>
-  <pre id="diff-output" class="diff"></pre>
-      </div>
-      <div id="events" class="events" style="margin-top:12px"></div>
-    </section>
+        <div class="stream-wrap">
+        <div id="diff-panel" class="card mt-4 d-none">
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-2">
+              <strong>Diff</strong>
+              <div class="d-flex gap-2 ms-auto">
+                <button id="copy-diff" class="btn btn-outline-secondary" title="Copy diff">Copy Diff</button>
+                <button id="close-diff" class="btn btn-outline-secondary" title="Close">Close</button>
+              </div>
+            </div>
+            <pre id="diff-output" class="diff"></pre>
+          </div>
+        </div>
+        <div id="events" class="events mt-3"></div>
+        </div>
+      </section>
+    </div>
   </main>
 
   <script>
@@ -234,16 +172,16 @@
         listEl.innerHTML = '';
         if (!data.endpoints.length) {
           const empty = document.createElement('div');
-          empty.className = 'muted';
+          empty.className = 'muted text-center';
           empty.textContent = 'No endpoints yet. Create one.';
           listEl.appendChild(empty);
           return;
         }
         for (const ep of data.endpoints) {
           const div = document.createElement('div');
-          div.className = 'ep' + (ep.id === currentId ? ' active' : '');
+          div.className = 'ep list-group-item list-group-item-action' + (ep.id === currentId ? ' active' : '');
           div.dataset.epId = ep.id;
-            div.innerHTML = `<div class="row"><strong>${ep.id}</strong><span class="muted">${fmtTime(ep.expiresAt)}</span></div><div class="muted" style="word-break:break-all">${ep.url}</div><div class="muted">events: <span class="ep-count">${ep.eventCount}</span></div>`;
+            div.innerHTML = `<div class="d-flex justify-content-between"><strong>${ep.id}</strong><span class="muted">${fmtTime(ep.expiresAt)}</span></div><div class="muted text-break">${ep.url}</div><div class="muted">events: <span class="ep-count">${ep.eventCount}</span></div>`;
           div.onclick = () => select(ep.id, ep.url, ep.expiresAt);
           listEl.appendChild(div);
         }
@@ -255,7 +193,7 @@
 
     async function select(id, url, expiresAt) {
       currentId = id;
-      detailEl.innerHTML = `<div class="row"><div class="gap-8" style="display:flex;align-items:center"><strong>${id}</strong><span class="pill">${fmtTime(expiresAt)} left</span></div><div class="gap-8" style="display:flex;align-items:center"><button id="copy-id" class="btn-ghost" title="Copy ID">Copy ID</button><button id="copy-url" class="btn-ghost" title="Copy URL">Copy URL</button><button id="toggle-live" class="btn-ghost" title="Toggle live">${liveEnabled ? 'Pause Live' : 'Resume Live'}</button></div></div><div class="wrap"><a href="${url}" target="_blank">${url}</a></div>`;
+      detailEl.innerHTML = `<div class="card glass p-5 text-center"><div class="mb-3"><strong>${id}</strong> <span class="pill">${fmtTime(expiresAt)} left</span></div><div class="d-flex flex-wrap justify-content-center gap-3 mb-4"><button id="copy-id" class="btn btn-outline-secondary" title="Copy ID">Copy ID</button><button id="copy-url" class="btn btn-outline-secondary" title="Copy URL">Copy URL</button><button id="toggle-live" class="btn btn-outline-secondary" title="Toggle live">${liveEnabled ? 'Pause Live' : 'Resume Live'}</button></div><div class="wrap"><a href="${url}" target="_blank">${url}</a></div></div>`;
       setActiveEndpointCard(id);
       document.getElementById('copy-id').onclick = () => copy(id);
       document.getElementById('copy-url').onclick = () => copy(url);
@@ -271,14 +209,17 @@
       rawEvents = data.events.slice();
       renderEvents();
       es = new EventSource(API + `/api/endpoints/${id}/stream`);
-      es.onmessage = (ev) => {
-        const evt = JSON.parse(ev.data);
-        rawEvents.unshift(evt);
-        if (liveEnabled) {
-          addIncomingEvent(evt);
-        }
-        updateEndpointEventCount(id);
+      const onWebhook = (ev) => {
+        try {
+          const evt = JSON.parse(ev.data);
+          rawEvents.unshift(evt);
+          if (liveEnabled) {
+            addIncomingEvent(evt);
+          }
+          updateEndpointEventCount(id);
+        } catch (e) { console.warn('Invalid event payload', e); }
       };
+      es.addEventListener('webhook', onWebhook);
       es.onopen = () => { liveLabel.textContent = 'Live'; };
       es.onerror = () => {
         console.warn('Stream error; browser will attempt to reconnect');
@@ -341,23 +282,24 @@
 
     function buildEventCard(evt) {
       const el = document.createElement('div');
-      el.className = 'evt';
+      el.className = 'evt card';
+      const cardBody = document.createElement('div');
+      cardBody.className = 'card-body';
       const headerHtml = document.createElement('div');
-      headerHtml.className = 'row';
+      headerHtml.className = 'd-flex justify-content-between';
       headerHtml.innerHTML = `<div><strong>${evt.method}</strong> <span class="muted">${evt.path}</span></div><div class="muted">${new Date(evt.timestamp).toLocaleTimeString()}</div>`;
       const meta = document.createElement('div');
-      meta.className = 'row';
-      meta.style.marginTop = '4px';
-      meta.innerHTML = `<div class="muted" style="flex:1">id: ${evt.id}</div><div style="display:flex; gap:4px"><button class="btn-ghost" data-copy="id" title="Copy event id">Copy ID</button><button class="btn-ghost" data-select="${evt.id}" title="Select for diff">${selectedEventIds.has(evt.id) ? 'Unselect' : 'Select'}</button></div>`;
+      meta.className = 'd-flex justify-content-between mt-1';
+      meta.innerHTML = `<div class="muted">id: ${evt.id}</div><div class="d-flex gap-2"><button class="btn btn-outline-secondary" data-copy="id" title="Copy event id">Copy ID</button><button class="btn btn-outline-primary" data-select="${evt.id}" title="Select for diff">${selectedEventIds.has(evt.id) ? 'Unselect' : 'Select'}</button></div>`;
 
       const headersSection = document.createElement('div');
       const bodySection = document.createElement('div');
       const headersTitle = document.createElement('div');
-      headersTitle.className = 'row';
-      headersTitle.innerHTML = `<strong>Headers</strong><div class="gap-8" style="display:flex"><button class="btn-ghost" title="Copy headers">Copy</button></div>`;
+      headersTitle.className = 'd-flex justify-content-between align-items-center';
+      headersTitle.innerHTML = `<strong>Headers</strong><div class="d-flex gap-2"><button class="btn btn-outline-secondary" title="Copy headers">Copy</button></div>`;
       const bodyTitle = document.createElement('div');
-      bodyTitle.className = 'row';
-      bodyTitle.innerHTML = `<strong>Body</strong><div class="gap-8" style="display:flex"><button class="btn-ghost" title="Copy body">Copy</button></div>`;
+      bodyTitle.className = 'd-flex justify-content-between align-items-center';
+      bodyTitle.innerHTML = `<strong>Body</strong><div class="d-flex gap-2"><button class="btn btn-outline-secondary" title="Copy body">Copy</button></div>`;
 
       const headersView = renderJSON(evt.headers || {});
       let parsedBody = evt.body;
@@ -369,10 +311,11 @@
       bodySection.appendChild(bodyTitle);
       bodySection.appendChild(bodyView);
 
-      el.appendChild(headerHtml);
-      el.appendChild(meta);
-      el.appendChild(headersSection);
-      el.appendChild(bodySection);
+      cardBody.appendChild(headerHtml);
+      cardBody.appendChild(meta);
+      cardBody.appendChild(headersSection);
+      cardBody.appendChild(bodySection);
+      el.appendChild(cardBody);
 
       const [copyHeadersBtn] = headersTitle.querySelectorAll('button');
       const [copyBodyBtn] = bodyTitle.querySelectorAll('button');
@@ -406,12 +349,12 @@
       const b = rawEvents.find(e => e.id === bId);
       if (!a || !b) return;
       const diffLines = buildDiff(a, b);
-  diffOutput.innerHTML = renderDiffHtml(diffLines);
-  diffOutput.dataset.raw = diffLines.join('\n');
-      diffPanel.style.display = 'block';
+      diffOutput.innerHTML = renderDiffHtml(diffLines);
+      diffOutput.dataset.raw = diffLines.join('\n');
+      diffPanel.classList.remove('d-none');
     };
-    closeDiffBtn.onclick = () => { diffPanel.style.display = 'none'; };
-  copyDiffBtn.onclick = () => copy(diffOutput.dataset.raw || diffOutput.textContent);
+    closeDiffBtn.onclick = () => { diffPanel.classList.add('d-none'); };
+    copyDiffBtn.onclick = () => copy(diffOutput.dataset.raw || diffOutput.textContent);
 
     function flatten(obj, prefix = '', out = {}) {
       if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
@@ -470,8 +413,11 @@
       select(ep.id, ep.url, ep.expiresAt);
     };
 
+    // Initial placeholder centered detail card
+    detailEl.innerHTML = `<div class=\"card glass p-5 text-center\"><div class=\"muted mb-2\">Create or select an endpoint to view details.</div><div class=\"small text-muted\">Use the TTL field to set a lifespan before creation.</div></div>`;
     loadList();
     setInterval(loadList, 5000);
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qQ2iX+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 </body>
 </html>

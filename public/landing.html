@@ -4,244 +4,158 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hooky — Real‑time Webhook Playground</title>
-  <meta name="description" content="Ephemeral webhook endpoints with live streaming, diffs, and a zero‑setup Deno/Express stack. Built for developers integrating real‑time B2B systems." />
-  <style>
-    :root {
-      --bg: #0b1020;
-      --panel: #0e1530;
-      --panel-alt: #121a3d;
-      --header: #0c122a;
-      --fg: #e6e8ef;
-      --muted: #9aa3c7;
-      --border: #232a4a;
-      --code-bg: #0a0f22;
-      --accent: #5b8cff;
-      --accent-2: #7b5bff;
-      --shadow: 0 10px 30px rgba(0,0,0,0.35);
-    }
-    [data-theme="light"] {
-      --bg: #f6f8fc;
-      --panel: #ffffff;
-      --panel-alt: #f1f3f9;
-      --header: #ffffff;
-      --fg: #0b1020;
-      --muted: #5a667f;
-      --border: #e3e8f5;
-      --code-bg: #f1f3f9;
-      --accent: #3b6cff;
-      --accent-2: #6b46ff;
-      --shadow: 0 10px 30px rgba(0,0,0,0.06);
-    }
-    html, body { height: 100%; }
-    body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif; background: radial-gradient(1200px 600px at 20% -10%, rgba(123,91,255,0.15), transparent), radial-gradient(1000px 500px at 100% 0%, rgba(91,140,255,0.12), transparent), var(--bg); color: var(--fg); }
-    a { color: inherit; text-decoration: none; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-    header { position: sticky; top: 0; backdrop-filter: saturate(1.2) blur(6px); background: color-mix(in srgb, var(--header) 92%, transparent); border-bottom: 1px solid var(--border); z-index: 10; }
-    .nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; }
-    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: 0.3px; }
-    .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow); }
-    .nav a.btn { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff !important; border: none !important; box-shadow: var(--shadow); }
-    .btn-ghost { background: transparent; color: var(--fg); }
-
-    /* Hero */
-    .hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 28px; align-items: center; padding: 52px 0 28px; }
-    .eyebrow { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); font-size: 12px; }
-    .pulse { width: 8px; height: 8px; border-radius: 999px; background: #ff5c5c; box-shadow: 0 0 10px rgba(255,92,92,.9); animation: pulse 1.4s infinite; }
-    @keyframes pulse { 0%{ transform: scale(1); opacity: 1; } 70%{ transform: scale(1.5); opacity: .25; } 100%{ transform: scale(1); opacity: 1; } }
-    h1 { font-size: clamp(28px, 6vw, 44px); line-height: 1.05; margin: 16px 0 10px; }
-    .sub { font-size: 16px; color: var(--muted); max-width: 640px; }
-    .cta { display: flex; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
-
-    .card { background: color-mix(in srgb, var(--panel) 96%, transparent); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); }
-
-    /* Feature highlights */
-    .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 24px; }
-    .feat { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--panel); }
-    .feat h3 { margin: 0 0 6px; font-size: 16px; }
-    .muted { color: var(--muted); }
-
-    /* Code blocks */
-    pre { background: var(--code-bg); border: 1px solid var(--border); padding: 12px; border-radius: 10px; overflow: auto; margin: 0; }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size: 13px; }
-
-    /* Sections */
-    section { padding: 40px 0; }
-    .section-title { font-size: 20px; margin: 0 0 12px; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-    /* Footer */
-    footer { border-top: 1px solid var(--border); color: var(--muted); padding: 20px 0; font-size: 13px; }
-    .sep { height: 1px; background: var(--border); margin: 20px 0; }
-
-    @media (max-width: 980px) {
-      .hero { grid-template-columns: 1fr; }
-      .features { grid-template-columns: 1fr; }
-      .grid-2 { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-ENjdO4Dr2bkBIFxQpeoA6VKHr8zWv1pGp9l9huZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+  <meta name="description" content="Ephemeral webhook endpoints with live streaming, diffs, and a zero‑setup Deno/Express stack." />
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body>
-  <header>
-    <div class="container nav">
-      <div class="brand"><span class="logo"></span> Hooky</div>
-      <nav class="nav-actions" style="display:flex; gap:8px; align-items:center">
-        <a class="btn" href="http://localhost:3000" target="_blank" rel="noopener noreferrer">Launch Local UI</a>
-        <a class="btn" href="#get-started">CLI</a>
-        <a class="btn" href="https://github.com/davidfries/hooky" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-    </div>
-  </header>
-
-  <main>
-    <section class="hero container">
-      <div>
-        <span class="eyebrow"><span class="pulse"></span> Built for real‑time data & B2B integrations</span>
-  <h1>Spin up disposable webhook endpoints. Watch payloads stream in live.</h1>
-  <p class="sub">Hooky is your real‑time webhook playground: <strong>browser UI</strong> for streaming, inspecting & diffing payloads and a <strong>cross‑platform CLI</strong> for automation — ephemeral endpoints, live SSE stream, JSON diffing, filtering (Redis‑backed, zero‑setup Deno/Express stack).
-        </p>
-        <div class="cta">
-          <a class="btn btn-primary" href="/">Launch UI</a>
-          <a class="btn" href="#get-started">Get Started (CLI + UI)</a>
-        </div>
-        <div class="features" style="margin-top:20px">
-          <div class="feat">
-            <h3>Live stream (SSE)</h3>
-            <div class="muted">See events as they arrive — no refresh. Auto‑reconnect, pause/resume.</div>
-          </div>
-          <div class="feat">
-            <h3>Diff & filter</h3>
-            <div class="muted">Colorized JSON diffs and full‑text filtering across path, headers, and body.</div>
-          </div>
-          <div class="feat">
-            <h3>Ephemeral & shareable</h3>
-            <div class="muted">Time‑boxed endpoints with TTL; send the URL to partners safely during tests.</div>
-          </div>
+  <nav class="navbar navbar-expand-lg navbar-dark app-navbar">
+    <div class="container container-narrow">
+      <a class="navbar-brand brand" href="#"><span class="logo"></span> Hooky</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsMain" aria-controls="navbarsMain" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarsMain">
+        <div class="ms-auto d-flex align-items-center gap-2">
+          <a class="btn btn-outline-secondary" href="http://localhost:3000" target="_blank" rel="noopener noreferrer">Launch Local UI</a>
+          <a class="btn btn-outline-secondary" href="#get-started">CLI</a>
+          <a class="btn btn-outline-secondary" href="https://github.com/davidfries/hooky" target="_blank" rel="noopener">GitHub</a>
+          <button id="theme" class="btn btn-outline-secondary" type="button" title="Toggle theme">🌓</button>
         </div>
       </div>
-      <div class="card">
-        <pre><code># Download binaries:
+    </div>
+  </nav>
+  <main>
+    <section class="container container-narrow py-5 hero-wrap">
+      <div class="hero-grid text-center text-lg-start">
+        <div class="hero-copy d-flex flex-column align-items-center align-items-lg-start">
+          <span class="eyebrow"><span class="pulse"></span> Built for real‑time data & B2B integrations</span>
+          <h1>Spin up disposable webhook endpoints. Watch payloads stream in live.</h1>
+          <p class="sub">Hooky is your real‑time webhook playground: <strong>browser UI</strong> for streaming, inspecting & diffing payloads and a <strong>cross‑platform CLI</strong> for automation.</p>
+          <div class="d-flex gap-2 flex-wrap mt-2 justify-content-center justify-content-lg-start">
+            <a class="btn btn-primary" href="/">Launch UI</a>
+            <a class="btn btn-outline-secondary" href="#get-started">Get Started (CLI + UI)</a>
+          </div>
+          <div class="row g-3 mt-3 justify-content-center text-center">
+            <div class="col-12 col-md-4"><div class="feat-card h-100"><h3 class="h6 mb-1">Live stream (SSE)</h3><div class="muted">Events appear instantly with auto‑reconnect & pause/resume.</div></div></div>
+            <div class="col-12 col-md-4"><div class="feat-card h-100"><h3 class="h6 mb-1">Diff & filter</h3><div class="muted">Colorized JSON diffs and full‑text filtering.</div></div></div>
+            <div class="col-12 col-md-4"><div class="feat-card h-100"><h3 class="h6 mb-1">Ephemeral & shareable</h3><div class="muted">Time‑boxed endpoints; safe to share during tests.</div></div></div>
+          </div>
+        </div>
+        <div class="hero-side d-flex justify-content-center">
+          <div class="card glass w-100 code-card text-center">
+            <pre><code># Download binaries:
 # https://github.com/davidfries/hooky/releases
-# Cross-platform: Linux, macOS, Windows (built with Deno)
+# Cross-platform: Linux, macOS, Windows
 
-# Create an endpoint (default 1h TTL) — Linux
+# Create an endpoint (1h TTL default)
 $ ./hooky create
 { "id": "a1b2c3d4", "url": "http://localhost:3000/hook/a1b2c3d4" }
 
 # Send a test payload
-$ curl -X POST \
-  -H 'content-type: application/json' \
+$ curl -X POST -H 'content-type: application/json' \
   -d '{"hello":"world"}' \
   http://localhost:3000/hook/a1b2c3d4
 
 # List events via CLI
 $ ./hooky events a1b2c3d4
 
-# Tail events in the UI (SSE)
-Open http://localhost:3000 and select your endpoint
-</code></pre>
-        <div class="muted" style="margin-top:8px">Hooky runs on Linux, macOS, and Windows — powered by Deno compile.</div>
+# Tail live events in UI
+Open http://localhost:3000
+            </code></pre>
+            <div class="muted mt-2">Runs on Linux, macOS, Windows — powered by Deno compile.</div>
+          </div>
+        </div>
       </div>
     </section>
-
-    <section class="container" id="how-it-works">
+    <section class="container container-narrow py-5" id="how-it-works">
       <h2 class="section-title">How it works</h2>
-      <div class="grid-2">
-        <div class="card"><h3>Create</h3><p class="muted">Generate a temporary endpoint with a TTL. No tunnels, no boilerplate.</p></div>
-        <div class="card"><h3>Integrate</h3><p class="muted">Point your SaaS/partner system at the URL. We capture headers, query, and body.</p></div>
-        <div class="card"><h3>Observe</h3><p class="muted">Watch events live via SSE in the browser, copy payloads, and diff across events.</p></div>
-        <div class="card"><h3>Expire</h3><p class="muted">Endpoints auto‑cleanup. Redis‑backed storage with pub/sub for scale.</p></div>
+      <div class="row g-3">
+        <div class="col-md-6 col-lg-3"><div class="card glass text-center"><div class="card-body"><h3 class="h6">Create</h3><p class="muted mb-0">Generate a temporary endpoint with TTL.</p></div></div></div>
+        <div class="col-md-6 col-lg-3"><div class="card glass text-center"><div class="card-body"><h3 class="h6">Integrate</h3><p class="muted mb-0">Point any webhook source at the URL.</p></div></div></div>
+        <div class="col-md-6 col-lg-3"><div class="card glass text-center"><div class="card-body"><h3 class="h6">Observe</h3><p class="muted mb-0">Live SSE stream; copy & diff payloads.</p></div></div></div>
+        <div class="col-md-6 col-lg-3"><div class="card glass text-center"><div class="card-body"><h3 class="h6">Expire</h3><p class="muted mb-0">Auto cleanup after TTL.</p></div></div></div>
       </div>
     </section>
-
-    <section class="container" id="for-b2b">
+    <section class="container container-narrow py-5" id="for-b2b">
       <h2 class="section-title">Made for B2B integrations</h2>
-      <div class="card" style="display:grid; gap:10px">
-        <div>• Validate webhook contracts from partners without standing up infrastructure.</div>
-        <div>• Compare payload versions safely with colorized diffs and filters.</div>
-        <div>• Inspect signatures and headers, test retries, and verify idempotency keys.</div>
-        <div>• Share endpoint links during UAT; decommission automatically.</div>
+      <div class="card glass d-grid gap-2 p-3">
+        <div>• Validate webhook contracts without infra.</div>
+        <div>• Compare payload versions safely.</div>
+        <div>• Inspect headers, signatures, retries.</div>
+        <div>• Share links in UAT; auto expire.</div>
       </div>
     </section>
-
-    <section class="container" id="get-started">
+    <section class="container container-narrow py-5" id="get-started">
       <h2 class="section-title">Get started (UI & CLI)</h2>
-      <div class="grid-2">
-        <div class="card">
+      <div class="row g-3">
+        <div class="col-lg-6"><div class="card glass">
           <h3>UI Quickstart</h3>
-          <pre><code># Run with Docker (quick setup)
-$ docker run -p 3000:3000 ghcr.io/&lt;your-org&gt;/hooky:latest
+          <pre><code># Run with Docker
+$ docker run -p 3000:3000 ghcr.io/<your-org>/hooky:latest
 
-# Or run from source (requires Deno)
+# Or run from source (Deno)
 $ deno task server
 
 # Open the UI
 http://localhost:3000
 
-# Create an endpoint in the UI or via CLI
+# Create an endpoint
 $ ./hooky create
 
-# Send a test payload (replace &lt;id&gt;)
+# Send a test payload (replace <id>)
 $ curl -X POST -H 'content-type: application/json' \
-  -d '{"demo":123}' http://localhost:3000/hook/&lt;id&gt;
-
-# Watch it appear live in Events panel
-</code></pre>
-        </div>
-        <div class="card">
+  -d '{"demo":123}' http://localhost:3000/hook/<id>
+          </code></pre>
+        </div></div>
+        <div class="col-lg-6"><div class="card glass">
           <h3>CLI (Deno)</h3>
-          <pre><code># Download: https://github.com/davidfries/hooky/releases
-# Cross-platform: Linux, macOS, Windows (built with Deno)
+          <pre><code># Download release binaries
+# https://github.com/davidfries/hooky/releases
 
-# Create (10 min TTL) — Linux
+# Create (10 min TTL example)
 $ ./hooky create 600
 
 # List endpoints
 $ ./hooky list
 
 # List events
-$ ./hooky events &lt;id&gt;
+$ ./hooky events <id>
 
-# Send a ping
-$ ./hooky ping &lt;id&gt; '{"demo":123}'
-</code></pre>
-          <div class="muted" style="margin-top:8px">Binaries available for Linux (x86_64/arm64), macOS (Intel/Apple Silicon), and Windows.</div>
-        </div>
-        <div class="card">
+# Ping endpoint
+$ ./hooky ping <id> '{"demo":123}'
+          </code></pre>
+          <div class="muted mt-2">Binaries for Linux (x86_64/arm64), macOS (Intel/Apple), Windows.</div>
+        </div></div>
+        <div class="col-12"><div class="card glass">
           <h3>Docker</h3>
-          <pre><code>$ docker run -p 3000:3000 ghcr.io/&lt;your-org&gt;/hooky:latest
-# Optional: point to your Redis
-$ docker run -e REDIS_URL=redis://host.docker.internal:6379 -p 3000:3000 ghcr.io/&lt;your-org&gt;/hooky:latest
-</code></pre>
-        </div>
+          <pre><code>$ docker run -p 3000:3000 ghcr.io/<your-org>/hooky:latest
+# Use custom Redis
+$ docker run -e REDIS_URL=redis://host.docker.internal:6379 -p 3000:3000 ghcr.io/<your-org>/hooky:latest
+          </code></pre>
+        </div></div>
       </div>
     </section>
   </main>
-
   <footer>
-    <div class="container" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap">
+    <div class="container d-flex align-items-center justify-content-between gap-2 flex-wrap">
       <div>© 2025 Hooky</div>
-      <div style="display:flex; gap:10px">
+      <div class="d-flex gap-2">
         <a class="muted" href="/">App</a>
         <a class="muted" href="#get-started">CLI</a>
         <a class="muted" href="#for-b2b">B2B</a>
       </div>
     </div>
   </footer>
-
   <script>
-    // Simple theme toggle, mirrors the app
     (function(){
-      const btn = document.getElementById('theme');
-      const key = 'hooky:theme';
-      const init = localStorage.getItem(key) || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-      document.body.setAttribute('data-theme', init);
-      btn.addEventListener('click', () => {
-        const t = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-        document.body.setAttribute('data-theme', t);
-        localStorage.setItem(key, t);
-      });
+      const btn=document.getElementById('theme');
+      const key='hooky:theme';
+      const init=localStorage.getItem(key)||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');
+      document.body.setAttribute('data-theme',init);
+      btn.addEventListener('click',()=>{const t=document.body.getAttribute('data-theme')==='dark'?'light':'dark';document.body.setAttribute('data-theme',t);localStorage.setItem(key,t);});
     })();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-qQ2iX+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 </body>
 </html>
