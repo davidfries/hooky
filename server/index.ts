@@ -112,6 +112,15 @@ async function listEvents(id: string): Promise<HookEvent[]> {
   return rec ? rec.events : [];
 }
 
+function computeBaseUrl(req: Request): string {
+  const envBase = process.env.PUBLIC_BASE_URL?.trim();
+  if (envBase && envBase.length) {
+    // Normalize: remove trailing slashes
+    return envBase.replace(/\/+$/, "");
+  }
+  return `${req.protocol}://${req.get("host")}`;
+}
+
 // Create an endpoint
 app.post("/api/endpoints", async (req: Request, res: Response) => {
   const id = randomUUID().slice(0, 8);
@@ -125,7 +134,8 @@ app.post("/api/endpoints", async (req: Request, res: Response) => {
   const now = Date.now();
   const rec: EndpointRecord = { id, createdAt: now, expiresAt: now + ttlSeconds * 1000 };
   await saveEndpoint(rec, ttlSeconds);
-  const url = `${req.protocol}://${req.get("host")}/hook/${id}`;
+  const base = computeBaseUrl(req);
+  const url = `${base}/hook/${id}`;
   res.json({ id, url, ttlSeconds, expiresAt: rec.expiresAt });
 });
 
@@ -142,7 +152,8 @@ app.get("/api/endpoints/:id", async (req: Request, res: Response) => {
   const rec = await getEndpoint(id);
   if (!rec) return res.status(404).json({ error: "not found" });
   const remainingMs = rec.expiresAt - Date.now();
-  const url = `${req.protocol}://${req.get("host")}/hook/${id}`;
+  const base = computeBaseUrl(req);
+  const url = `${base}/hook/${id}`;
   res.json({ id, url, expiresAt: rec.expiresAt, ttlSeconds: Math.max(0, remainingMs / 1000) });
 });
 
@@ -150,8 +161,7 @@ app.get("/api/endpoints/:id", async (req: Request, res: Response) => {
 app.get("/api/endpoints", async (req: Request, res: Response) => {
   const now = Date.now();
   const eps = await listEndpoints();
-  const host = req.get("host");
-  const proto = req.protocol; // Express derives from request
+  const base = computeBaseUrl(req);
   const endpoints: { id: string; expiresAt: number; ttlSeconds: number; url: string; eventCount: number }[] = [];
   for (const rec of eps) {
     const ttlRemaining = Math.max(0, Math.round((rec.expiresAt - now) / 1000));
@@ -160,7 +170,7 @@ app.get("/api/endpoints", async (req: Request, res: Response) => {
       id: rec.id,
       expiresAt: rec.expiresAt,
       ttlSeconds: ttlRemaining,
-      url: `${proto}://${host}/hook/${rec.id}`,
+      url: `${base}/hook/${rec.id}`,
       eventCount,
     });
   }
@@ -226,10 +236,10 @@ app.all("/hook/:id", async (req: Request, res: Response) => {
   await pushEvent(id, evt);
   res.json({ ok: true, received: { id: evt.id } });
 });
-
+const host = (process.env.HOST && process.env.HOST.trim().length) ? process.env.HOST.trim() : "0.0.0.0";
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-app.listen(port, () => {
-  console.log(`Hooky server listening on http://localhost:${port}`);
+app.listen(port, host, () => {
+  console.log(`Hooky server listening on http://${host}:${port}`);
 });
 
 // Periodic pruning of expired endpoints from the set (Redis key expiry handles data removal)
