@@ -353,7 +353,16 @@
       diffOutput.dataset.raw = diffLines.join('\n');
       diffPanel.classList.remove('d-none');
     };
-    closeDiffBtn.onclick = () => { diffPanel.classList.add('d-none'); };
+    closeDiffBtn.onclick = () => {
+      // Clear diff output and selection state
+      diffOutput.innerHTML = '';
+      diffOutput.removeAttribute('data-raw');
+      selectedEventIds = new Set();
+      compareBtn.disabled = true;
+      // Re-render events to switch buttons back to 'Select'
+      renderEvents();
+      diffPanel.classList.add('d-none');
+    };
     copyDiffBtn.onclick = () => copy(diffOutput.dataset.raw || diffOutput.textContent);
 
     function flatten(obj, prefix = '', out = {}) {
