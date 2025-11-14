@@ -14,34 +14,63 @@ Hooky consists of:
 
 ## Running
 
-Start Redis locally (default) or set `REDIS_URL` env var, then start the server (default port 3000):
+Start Redis locally (default) or set `REDIS_URL`, then start the server (default port 3000).
+
+Development (Deno task):
 
 ```bash
 deno task server
 ```
 
-In another terminal use the CLI:
+Run the built binary locally:
+
+```bash
+./hooky server
+```
+
+In another terminal use the CLI (local binary):
 
 ```bash
 # Create a new endpoint (1 hour default)
-deno run -A main.ts create
+./hooky create
 
 # Create endpoint with 5 minute TTL
-deno run -A main.ts create 300
+./hooky create 300
 # Sample output:
 # { "id": "a1b2c3d4", "url": "http://localhost:3000/hook/a1b2c3d4" }
 
 # Send a test ping (optional convenience)
-deno run -A main.ts ping a1b2c3d4 '{"demo":123}'
+./hooky ping a1b2c3d4 '{"demo":123}'
 
 # List active endpoints
-deno run -A main.ts list
+./hooky list
 
 # List events for one endpoint
-deno run -A main.ts events a1b2c3d4
+./hooky events a1b2c3d4
 ```
 
 Open the UI at <http://localhost:3000> (lists active endpoints and streams events live via SSE).
+
+### Docker examples
+
+Quick docker run (create a user network so hooky can reach Redis by name):
+
+```bash
+docker network create hooky-net
+docker run -d --name redis --network hooky-net redis:latest
+# build your image first if needed: docker build -t hooky:latest .
+docker run -p 3000:3000 --rm --network hooky-net \
+  -e REDIS_URL=redis://redis:6379 \
+  hooky:latest
+```
+
+Access the UI at <http://localhost:3000>.
+
+Notes:
+- If Redis is not available the server falls back to in-memory storage.
+- Use `PUBLIC_BASE_URL` if running behind a proxy or custom domain (see Configuration).
+- To run the CLI against a remote server set `HOOKY_SERVER`, e.g.:
+  `HOOKY_SERVER=http://hooks.example.com ./hooky create`
 
 Or using tasks shorthand:
 
