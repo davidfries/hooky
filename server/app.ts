@@ -115,6 +115,23 @@ export function buildApp() {
     res.json({ events: await listEvents(rec.id) });
   });
 
+  // Server-Sent Events stream (in-memory mode for tests)
+  app.get("/api/endpoints/:id/stream", async (req: Request, res: Response) => {
+    const rec = await getEndpoint(req.params.id); if (!rec) return res.status(404).end();
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    // Flush headers if available (Express may provide this on certain servers)
+    (res as unknown as { flushHeaders?: () => void }).flushHeaders?.();
+    const emitter = getEmitter(rec.id);
+    const handler = (evt: HookEvent) => {
+      res.write(`event: webhook\n`);
+      res.write(`data: ${JSON.stringify(evt)}\n\n`);
+    };
+    emitter.on("event", handler);
+    req.on("close", () => { emitter.off("event", handler); });
+  });
+
   app.delete("/api/endpoints/:id", async (req: Request, res: Response) => {
     const deleted = await deleteEndpoint(req.params.id);
     if (!deleted) return res.status(404).json({ error: "not found" });

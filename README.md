@@ -9,6 +9,7 @@ Hooky lets you instantly create ephemeral webhook endpoints, capture and stream 
 Hooky consists of:
 
 - Deno TypeScript CLI (`main.ts`) to create endpoints, list events, and send test pings.
+- Deno TypeScript CLI (`main.ts`) to create endpoints, list events, stream live events (`tail`), and send test pings.
 - Express-based server (`server/index.ts`) that provisions temporary endpoints and stores received webhook payloads (Redis or in-memory fallback).
 - Browser UI (`public/index.html`) for listing endpoints and streaming incoming webhook events live (SSE).
 
@@ -47,6 +48,15 @@ In another terminal use the CLI (local binary):
 
 # List events for one endpoint
 ./hooky events a1b2c3d4
+
+# Live stream events (SSE) from an endpoint
+./hooky tail a1b2c3d4
+
+# Compact output (just body) and disable colors
+./hooky tail a1b2c3d4 --compact --no-color
+
+# Point CLI at remote server
+HOOKY_SERVER=https://hooks.example.com ./hooky tail a1b2c3d4
 ```
 
 Open the UI at <http://localhost:3000> (lists active endpoints and streams events live via SSE).
@@ -67,6 +77,7 @@ docker run -p 3000:3000 --rm --network hooky-net \
 Access the UI at <http://localhost:3000>.
 
 Notes:
+
 - If Redis is not available the server falls back to in-memory storage.
 - Use `PUBLIC_BASE_URL` if running behind a proxy or custom domain (see Configuration).
 - To run the CLI against a remote server set `HOOKY_SERVER`, e.g.:
@@ -115,6 +126,42 @@ When `PUBLIC_BASE_URL` is set every response containing a `url` field uses it, i
 - `DELETE /api/endpoints/:id` -> `{ ok: true, deleted: id }` (removes endpoint and all events)
 - Receive webhook: any method `/hook/:id` storing body + metadata.
 - `GET /api/endpoints/:id/stream` -> SSE events (one JSON object per line-delimited message).
+
+### CLI Streaming (`tail`)
+
+The `tail` command connects to `GET /api/endpoints/:id/stream` and prints each incoming webhook event live.
+
+Features:
+
+- Auto-reconnect with exponential backoff (up to 30s) if the connection drops.
+- Graceful shutdown with Ctrl-C.
+- Colorized method & timestamp (`NO_COLOR` env or `--no-color` disables colors).
+- `--compact` suppresses headers/query and prints only the raw/JSON body.
+
+Usage:
+
+```bash
+./hooky tail <endpointId> [--compact] [--no-color]
+```
+
+Set `HOOKY_SERVER` to stream from a remote deployment:
+
+```bash
+HOOKY_SERVER=https://hooks.example.com ./hooky tail 9f3d12ab
+```
+
+Example output (abbreviated):
+
+```text
+2025-11-17T15:12:34.123Z POST   /hook/9f3d12ab?foo=bar
+headers: {"content-type":"application/json"}
+query: {"foo":"bar"}
+body: {
+  "event":"order.created",
+  "id":"evt_123",
+  "data":{ "orderId":42 }
+}
+```
 
 ## Notes / Roadmap
 

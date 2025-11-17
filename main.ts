@@ -2,6 +2,7 @@
 // Commands:
 //   create [ttlSeconds]   -> creates a new temporary webhook endpoint
 //   events <id>           -> lists captured events for the endpoint
+//   tail <id> [--compact] [--no-color] -> live stream events (SSE)
 //   ping <id> [payload]   -> convenience: send a test POST to the endpoint (local only)
 //   list                  -> list active endpoints
 //   server [--port <port>] [--redis <redisUrl>] -> launch built-in backend server
@@ -34,6 +35,7 @@ type StoredEvent = {
 
 const BASE_URL = Deno.env.get("HOOKY_SERVER") ?? "http://localhost:3000";
 import { VERSION } from "./version.ts";
+import * as colors from "@std/fmt/colors";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`${BASE_URL}${path}`, {
@@ -88,6 +90,145 @@ async function cmdEvents(id?: string) {
         console.log("headers:", evt.headers);
         console.log("query:", evt.query);
         console.log("body:", typeof evt.body === "string" ? evt.body : JSON.stringify(evt.body, null, 2));
+    }
+}
+
+type TailFlags = { compact: boolean; color: boolean };
+function parseTailFlags(args: string[]): { id?: string; flags: TailFlags } {
+    const flags: TailFlags = { compact: false, color: true };
+    let id: string | undefined;
+    for (let i = 0; i < args.length; i++) {
+        const a = args[i];
+        if (a === "--compact" || a === "-c") flags.compact = true;
+        else if (a === "--no-color") flags.color = false;
+        else if (!id) id = a;
+    }
+    // Respect NO_COLOR environment if set
+    if (Deno.env.get("NO_COLOR")) flags.color = false;
+    return { id, flags };
+}
+
+async function cmdTail(rawId?: string, ...rest: string[]) {
+    // Allow either tail <id> [flags] or tail [flags] <id>
+    const idArg = rawId;
+    const { id, flags } = parseTailFlags(idArg ? [idArg, ...rest] : rest);
+    const endpointId = id;
+    if (!endpointId) throw new Error("Usage: tail <id> [--compact] [--no-color]");
+    const streamUrl = `${BASE_URL}/api/endpoints/${endpointId}/stream`;
+
+    let stop = false;
+    const ac = new AbortController();
+    const onSig = () => { stop = true; ac.abort("SIGINT"); };
+    Deno.addSignalListener("SIGINT", onSig);
+
+    let attempt = 0;
+    console.log(`Streaming events from ${streamUrl} (Ctrl-C to stop)`);
+    while (!stop) {
+        attempt++;
+        const backoffMs = Math.min(30_000, 1000 * 2 ** Math.min(attempt - 1, 5));
+        try {
+            const res = await fetch(streamUrl, { headers: { Accept: "text/event-stream" }, signal: ac.signal });
+            if (!res.ok || !res.body) {
+                throw new Error(`Stream failed ${res.status}`);
+            }
+            if (attempt > 1) console.log("Reconnected.");
+            attempt = 0; // reset after successful connect
+
+            const reader = res.body
+                .pipeThrough(new TextDecoderStream())
+                .getReader();
+            let buf = "";
+            while (!stop) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                if (value) buf += value;
+                let idx: number;
+                while ((idx = buf.indexOf("\n\n")) !== -1) {
+                    const chunk = buf.slice(0, idx);
+                    buf = buf.slice(idx + 2);
+                    handleSSEChunk(chunk, flags);
+                }
+            }
+        } catch (e) {
+            if (stop) break;
+            const msg = e instanceof Error ? e.message : String(e);
+            console.error(`Stream error: ${msg}`);
+            console.log(`Reconnecting in ${Math.round(backoffMs / 1000)}s...`);
+            await delay(backoffMs);
+            continue;
+        }
+        if (!stop) {
+            console.log("Disconnected. Reconnecting...");
+            await delay(500);
+        }
+    }
+    Deno.removeSignalListener("SIGINT", onSig);
+}
+
+function delay(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
+
+function handleSSEChunk(block: string, flags: TailFlags) {
+    const lines = block.split(/\r?\n/);
+    let event = "message";
+    const dataLines: string[] = [];
+    for (const line of lines) {
+        if (line.startsWith(":")) continue; // comment
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+        // ignore id:/retry: for now
+    }
+    const dataText = dataLines.join("\n");
+    if (!dataText) return;
+    if (event !== "webhook") return; // ignore others
+    try {
+        const obj = JSON.parse(dataText) as StoredEvent;
+        printEvent(obj, flags);
+    } catch (_e) {
+        console.log(dataText);
+    }
+}
+
+function printEvent(evt: StoredEvent, flags: TailFlags) {
+    const ts = new Date(evt.timestamp).toISOString();
+    const method = pad(evt.method.toUpperCase(), 6);
+    const path = evt.path;
+    const header = `${fmt(ts, "dim", flags)} ${fmt(method, methodColor(evt.method), flags)} ${path}`;
+    console.log("\n" + header);
+    if (flags.compact) {
+        const bodyStr = typeof evt.body === "string" ? evt.body : JSON.stringify(evt.body);
+        console.log(bodyStr);
+        return;
+    }
+    console.log(fmt("headers:", "bold", flags), evt.headers);
+    console.log(fmt("query:", "bold", flags), evt.query);
+    console.log(fmt("body:", "bold", flags), typeof evt.body === "string" ? evt.body : JSON.stringify(evt.body, null, 2));
+}
+
+function methodColor(m: string): "green" | "yellow" | "red" | "blue" | "magenta" | "cyan" | "white" {
+    const up = m.toUpperCase();
+    if (up === "GET") return "green";
+    if (up === "POST") return "cyan";
+    if (up === "PUT") return "yellow";
+    if (up === "PATCH") return "magenta";
+    if (up === "DELETE") return "red";
+    return "blue";
+}
+
+function pad(s: string, n: number) { return s.length >= n ? s : s + " ".repeat(n - s.length); }
+
+function fmt(text: string, style: string, flags: TailFlags): string {
+    if (!flags.color) return text;
+    switch (style) {
+        case "bold": return colors.bold(text);
+        case "dim": return colors.dim(text);
+        case "green": return colors.green(text);
+        case "yellow": return colors.yellow(text);
+        case "red": return colors.red(text);
+        case "blue": return colors.blue(text);
+        case "magenta": return colors.magenta(text);
+        case "cyan": return colors.cyan(text);
+        case "white": return colors.white(text);
+        default: return text;
     }
 }
 
@@ -265,6 +406,9 @@ if (import.meta.main) {
                 case "events":
                     await cmdEvents(args[0]);
                     break;
+                case "tail":
+                    await cmdTail(args[0], ...args.slice(1));
+                    break;
                 case "ping":
                     await cmdPing(args[0], args[1]);
                     break;
@@ -280,7 +424,7 @@ if (import.meta.main) {
                             await cmdList();
                             break;
                 case undefined:
-                console.log("Hooky client usage:\n  create [ttlSeconds]\n  list\n  events <id>\n  ping <id> [json]\n  server [--port <n>] [--redis <url>]  (foreground)\n  server start [--port <n>] [--redis <url>] [--force] [--log [path]]\n  server stop\n  server status\n  version | --version | -v");
+                console.log("Hooky client usage:\n  create [ttlSeconds]\n  list\n  events <id>\n  tail <id> [--compact] [--no-color]\n  ping <id> [json]\n  server [--port <n>] [--redis <url>]  (foreground)\n  server start [--port <n>] [--redis <url>] [--force] [--log [path]]\n  server stop\n  server status\n  version | --version | -v");
                     break;
                 default:
                     console.error(`Unknown command: ${cmd}`);
