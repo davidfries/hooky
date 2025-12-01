@@ -71,7 +71,7 @@ docker run -d --name redis --network hooky-net redis:latest
 # build your image first if needed: docker build -t hooky:latest .
 docker run -p 3000:3000 --rm --network hooky-net \
   -e REDIS_URL=redis://redis:6379 \
-  hooky:latest
+  ghcr.io/davidfries/hooky:latest
 ```
 
 Access the UI at <http://localhost:3000>.
