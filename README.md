@@ -2,6 +2,8 @@
 
 Ephemeral webhook endpoint service for local testing.
 
+Try it out at: <https://hooky.sh>
+
 ## Overview
 
 Hooky lets you instantly create ephemeral webhook endpoints, capture and stream incoming requests live (via SSE), diff and filter payloads in a built‑in UI, and manage everything from a lightweight Deno CLI or Docker image—optionally persisting events in Redis.
