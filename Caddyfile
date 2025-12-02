@@ -1,0 +1,4 @@
+hooky.sh {
+    reverse_proxy http://hooky:3000
+    tls dfries4@gmail.com
+}

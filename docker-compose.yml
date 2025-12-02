@@ -1,24 +1,8 @@
+version: '3.8'
 services:
-  redis:
-    image: redis:7-alpine
-    container_name: hooky-redis
-    restart: unless-stopped
-    volumes:
-      - redis-data:/data
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: hooky-app
-    restart: unless-stopped
+  hooky:
+    image: ghcr.io/davidfries/hooky:latest
+    container_name: hooky
     ports:
       - "3000:3000"
     environment:
@@ -26,16 +10,38 @@ services:
       - PORT=3000
       - HOST=0.0.0.0
       # Uncomment and set for public hosting:
-      # - PUBLIC_BASE_URL=https://hooks.example.com
+      - PUBLIC_BASE_URL=https://hooky.sh
     depends_on:
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
+      - redis
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - hooky
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
 
 volumes:
   redis-data:
     driver: local
+  caddy_data:
+  caddy_config:
